@@ -41,7 +41,7 @@
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">E-mail</label>
-          <input id="authEmail" type="email" placeholder="simaon06@gmail.com" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500" />
+          <input id="authEmail" type="email" placeholder="tvuj@email.cz" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500" />
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">Heslo</label>
@@ -149,7 +149,7 @@
             <span class="text-xl">📄</span>
             <div>
               <h2 class="font-bold text-sm text-slate-800">Nahrát výpis z banky (CSV / PDF)</h2>
-              <p class="text-xs text-slate-400">Podporuje výpisy z mBank i ČSOB</p>
+              <p class="text-xs text-slate-400">Podporuje výpisy i seznam operací z mBank a ČSOB</p>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-2">
@@ -357,10 +357,10 @@
 
     let sb = null;
     if (!window.supabase) {
-      setAuthStatus('Chyba: Prohlížeč zablokoval skript Supabase. Klikni na ikonu lva (Brave Shields) nahoře a vypni štíty pro tuto stránku.', 'error');
+      setAuthStatus('Chyba: Prohlížeč zablokoval skript Supabase. Vypni Brave Shields pro tuto stránku.', 'error');
     } else {
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      setAuthStatus('Připraveno k přihlášení (verze 11).', 'ok');
+      setAuthStatus('Připraveno k přihlášení (verze 13).', 'ok');
     }
 
     if (window.pdfjsLib) {
@@ -368,14 +368,20 @@
     }
 
     const DEFAULT_CATEGORIES = [
-      { id: 'food', name: 'Jídlo & Nákupy', icon: '🍔', color: '#10b981' },
-      { id: 'transport', name: 'Doprava & Vlaky', icon: '🚆', color: '#3b82f6' },
-      { id: 'bills', name: 'Pravidelné výdaje', icon: '🏠', color: '#f59e0b' },
-      { id: 'fun', name: 'Zábava & Volný čas', icon: '🎉', color: '#8b5cf6' },
-      { id: 'school', name: 'Škola & Studium', icon: '🎓', color: '#06b6d4' },
-      { id: 'invest', name: 'Investice & Spoření', icon: '📈', color: '#ec4899' },
-      { id: 'income', name: 'Příjmy', icon: '💰', color: '#22c55e' },
-      { id: 'other', name: 'Ostatní', icon: '📦', color: '#64748b' }
+      { id: 'transport', icon: '🚆', name: 'Doprava & Vlaky', color: '#3b82f6' },
+      { id: 'bills', icon: '🏠', name: 'Pravidelné výdaje', color: '#f59e0b' },
+      { id: 'fun', icon: '🎉', name: 'Zábava & Volný čas', color: '#8b5cf6' },
+      { id: 'school', icon: '🎓', name: 'Škola & Studium', color: '#06b6d4' },
+      { id: 'invest', icon: '📈', name: 'Investice & Spoření', color: '#ec4899' },
+      { id: 'income', icon: '💰', name: 'Příjmy', color: '#22c55e' },
+      { id: 'other', icon: '📦', name: 'Ostatní', color: '#64748b' },
+      { id: 'cat_1795018630407', icon: '🍔', name: 'Jídlo', color: '#f2cc64' },
+      { id: 'cat_1795018689257', icon: '🛒', name: 'Potraviny - nákup', color: '#59a82e' },
+      { id: 'cat_1795018769223', icon: '🎮', name: 'Hry', color: '#2e6da8' },
+      { id: 'cat_1795019201269', icon: '👔', name: 'Oblečení', color: '#153756' },
+      { id: 'cat_1795019391501', icon: '🧴', name: 'Kosmetika', color: '#a7b6c3' },
+      { id: 'cat_1795019493284', icon: '🛫', name: 'Cestování', color: '#e7c208' },
+      { id: 'cat_1795019915047', icon: '💻', name: 'Elektro', color: '#38362e' }
     ];
 
     const DEFAULT_RULES = [
@@ -383,10 +389,111 @@
       { keyword: 'rjcz', categoryId: 'transport' },
       { keyword: 'české dráhy', categoryId: 'transport' },
       { keyword: 'dpmb', categoryId: 'transport' },
-      { keyword: 'albert', categoryId: 'food' },
-      { keyword: 'lidl', categoryId: 'food' },
-      { keyword: 'menza', categoryId: 'food' },
-      { keyword: 'trading 212', categoryId: 'invest' }
+      { keyword: 'trading 212', categoryId: 'invest' },
+      { keyword: 'bolt', categoryId: 'transport' },
+      { keyword: 'uber', categoryId: 'transport' },
+      { keyword: 'flixbus', categoryId: 'transport' },
+      { keyword: 'lidl', categoryId: 'cat_1795018689257' },
+      { keyword: 'tesco', categoryId: 'cat_1795018689257' },
+      { keyword: 'albert', categoryId: 'cat_1795018689257' },
+      { keyword: 'penny', categoryId: 'cat_1795018689257' },
+      { keyword: 'globus', categoryId: 'cat_1795018689257' },
+      { keyword: 'billa', categoryId: 'cat_1795018689257' },
+      { keyword: 'hruška', categoryId: 'cat_1795018689257' },
+      { keyword: 'hruska', categoryId: 'cat_1795018689257' },
+      { keyword: 'pekarstvi', categoryId: 'cat_1795018630407' },
+      { keyword: 'pekařství', categoryId: 'cat_1795018630407' },
+      { keyword: 'bolt food', categoryId: 'cat_1795018630407' },
+      { keyword: 'foodora', categoryId: 'cat_1795018630407' },
+      { keyword: 'wolt', categoryId: 'cat_1795018630407' },
+      { keyword: 'poke', categoryId: 'cat_1795018630407' },
+      { keyword: 'kebab', categoryId: 'cat_1795018630407' },
+      { keyword: 'nominos', categoryId: 'cat_1795018630407' },
+      { keyword: 'los capollitos', categoryId: 'cat_1795018630407' },
+      { keyword: 'bageterie', categoryId: 'cat_1795018630407' },
+      { keyword: 'kafe', categoryId: 'cat_1795018630407' },
+      { keyword: 'kavárna', categoryId: 'cat_1795018630407' },
+      { keyword: 'pizza', categoryId: 'cat_1795018630407' },
+      { keyword: 'bar', categoryId: 'fun' },
+      { keyword: 'pivo', categoryId: 'fun' },
+      { keyword: 'pivní burza', categoryId: 'fun' },
+      { keyword: 'klub', categoryId: 'fun' },
+      { keyword: 'club', categoryId: 'fun' },
+      { keyword: '1. patro', categoryId: 'fun' },
+      { keyword: 'kurnik shopa hospoda', categoryId: 'fun' },
+      { keyword: 'hospoda', categoryId: 'fun' },
+      { keyword: 'minimarket', categoryId: 'cat_1795018689257' },
+      { keyword: 'potraviny', categoryId: 'cat_1795018689257' },
+      { keyword: 'kodis', categoryId: 'transport' },
+      { keyword: 'ples', categoryId: 'fun' },
+      { keyword: 'cd', categoryId: 'transport' },
+      { keyword: 'ceske drahy', categoryId: 'transport' },
+      { keyword: 'leo express', categoryId: 'transport' },
+      { keyword: 'zalando', categoryId: 'cat_1795019201269' },
+      { keyword: 'cropp', categoryId: 'cat_1795019201269' },
+      { keyword: 'h&m', categoryId: 'cat_1795019201269' },
+      { keyword: 'reserved', categoryId: 'cat_1795019201269' },
+      { keyword: 'pull & bear', categoryId: 'cat_1795019201269' },
+      { keyword: 'bershka', categoryId: 'cat_1795019201269' },
+      { keyword: 'primark', categoryId: 'cat_1795019201269' },
+      { keyword: 'teta', categoryId: 'cat_1795019391501' },
+      { keyword: 'rossmann', categoryId: 'cat_1795019391501' },
+      { keyword: 'dm', categoryId: 'cat_1795019391501' },
+      { keyword: 'klm', categoryId: 'cat_1795019493284' },
+      { keyword: 'lisboa', categoryId: 'cat_1795019493284' },
+      { keyword: 'málaga', categoryId: 'cat_1795019493284' },
+      { keyword: 'estepona', categoryId: 'cat_1795019493284' },
+      { keyword: 'avanza', categoryId: 'cat_1795019493284' },
+      { keyword: 'liftago', categoryId: 'cat_1795019493284' },
+      { keyword: 'wizz air', categoryId: 'cat_1795019493284' },
+      { keyword: 'ryanair', categoryId: 'cat_1795019493284' },
+      { keyword: 'rede expressos', categoryId: 'cat_1795019493284' },
+      { keyword: 'restaurant', categoryId: 'cat_1795018630407' },
+      { keyword: 'nextbike', categoryId: 'transport' },
+      { keyword: 'mercadona', categoryId: 'cat_1795018689257' },
+      { keyword: 'idsjmk', categoryId: 'transport' },
+      { keyword: 'flix', categoryId: 'transport' },
+      { keyword: 'alza.cz', categoryId: 'cat_1795019915047' },
+      { keyword: 'alza', categoryId: 'cat_1795019915047' },
+      { keyword: 'tsbohemia', categoryId: 'cat_1795019915047' },
+      { keyword: 'fatfuck', categoryId: 'cat_1795018630407' },
+      { keyword: 'elementsgym', categoryId: 'bills' },
+      { keyword: 'youtube', categoryId: 'bills' },
+      { keyword: 'spotify', categoryId: 'bills' },
+      { keyword: 'delikomat', categoryId: 'cat_1795018630407' },
+      { keyword: 'nyx*wittprahaspolsr', categoryId: 'cat_1795018630407' },
+      { keyword: 'steam games', categoryId: 'cat_1795018769223' },
+      { keyword: 'steam', categoryId: 'cat_1795018769223' },
+      { keyword: 'wargaming', categoryId: 'cat_1795018769223' },
+      { keyword: 'zrádcovský večírek', categoryId: 'fun' },
+      { keyword: 'cg *goout.net', categoryId: 'fun' },
+      { keyword: 'oaza', categoryId: 'cat_1795018630407' },
+      { keyword: 'pekarstvi manukyan kot', categoryId: 'cat_1795018630407' },
+      { keyword: 'nu bistro', categoryId: 'cat_1795018630407' },
+      { keyword: 'klub fleda', categoryId: 'fun' },
+      { keyword: 'smsticket*vstupenky', categoryId: 'fun' },
+      { keyword: 'popeyes', categoryId: 'cat_1795018630407' },
+      { keyword: 'mcdonald', categoryId: 'cat_1795018630407' },
+      { keyword: 'nesnezeno.cz', categoryId: 'cat_1795018630407' },
+      { keyword: 'bbdomu', categoryId: 'cat_1795018630407' },
+      { keyword: 'id', categoryId: 'bills' },
+      { keyword: 'tezenis', categoryId: 'cat_1795019201269' },
+      { keyword: 'brnoid', categoryId: 'fun' },
+      { keyword: 'kurnik sopa pub', categoryId: 'fun' },
+      { keyword: 'typos music club', categoryId: 'fun' },
+      { keyword: 'portugalsko', categoryId: 'cat_1795019493284' },
+      { keyword: 'španělsko', categoryId: 'cat_1795019493284' },
+      { keyword: 'aeropuerto', categoryId: 'cat_1795019493284' },
+      { keyword: 'letiště', categoryId: 'cat_1795019493284' },
+      { keyword: 'elementcentropark-ostr', categoryId: 'bills' },
+      { keyword: 'metropolitano de lisbo', categoryId: 'transport' },
+      { keyword: 'slevomat.cz', categoryId: 'fun' },
+      { keyword: 'camping zambujeira', categoryId: 'cat_1795019493284' },
+      { keyword: 'dt rede expressos', categoryId: 'cat_1795019493284' },
+      { keyword: 'almograve', categoryId: 'cat_1795019493284' },
+      { keyword: 'www.cd.cz/eshop/', categoryId: 'transport' },
+      { keyword: 'csad', categoryId: 'transport' },
+      { keyword: 'wok food', categoryId: 'cat_1795018630407' }
     ];
 
     let currentUser = null;
@@ -462,10 +569,11 @@
         localStorage.setItem('mf_rules', JSON.stringify(state.rules));
         localStorage.setItem('mf_transactions', JSON.stringify(state.transactions));
         setSyncStatus('☁️ Synchronizováno');
-      } else if (state.transactions.length > 0) {
-        await saveState();
       } else {
-        setSyncStatus('☁️ Připraveno');
+        // Nový účet v cloudu -> inicializuje se tvými výchozími kategoriemi a pravidly
+        state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+        state.rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
+        await saveState();
       }
 
       if (state.transactions.length > 0) {
@@ -504,11 +612,17 @@
 
       setAuthStatus('⏳ Vytvářím účet...');
       try {
+        // Vyčistíme případná stará lokální data před registrací nového uživatele
+        localStorage.removeItem('mf_transactions');
+        localStorage.removeItem('mf_categories');
+        localStorage.removeItem('mf_rules');
+        state.transactions = [];
+
         const { data, error } = await sb.auth.signUp({ email, password });
         if (error) {
           setAuthStatus('Chyba registrace: ' + error.message, 'error');
         } else if (data && !data.session) {
-          setAuthStatus('Účet vytvořen, ale vyžaduje potvrzení e-mailu. Potvrď ho v Supabase -> Users -> Confirm user.', 'error');
+          setAuthStatus('Účet vytvořen, ale vyžaduje potvrzení e-mailu.', 'error');
         } else if (data && data.user) {
           await onUserAuthenticated(data.user);
         }
@@ -524,6 +638,8 @@
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       if (sb) await sb.auth.signOut();
       currentUser = null;
+      localStorage.removeItem('mf_transactions');
+      state.transactions = [];
       document.getElementById('appContainer').classList.add('hidden');
       document.getElementById('authScreen').classList.remove('hidden');
       setAuthStatus('Odhlášeno.');
@@ -556,7 +672,7 @@
     }
 
     function getCategory(id) {
-      return state.categories.find(c => c.id === id) || state.categories[state.categories.length - 1];
+      return state.categories.find(c => c.id === id) || state.categories.find(c => c.id === 'other') || state.categories[0];
     }
 
     function autoCategorize(title, amount) {
@@ -861,25 +977,56 @@
       return parseFloat(cleaned);
     }
 
+    function cleanMBankOperationTitle(raw) {
+      return raw
+        .replace(/\s+(PLATBA KARTOU|PLATBA NA INTERNETU|PŘÍCHOZÍ PLATBA Z JINÉ BANKY|ODCHOZÍ PLATBA DO JINÉ BANKY|PŘÍCHOZÍ OKAMŽITÁ PLATBA|ODCHOZÍ OKAMŽITÁ PLATBA|VÝBĚR Z BANKOMATU|POPLATEK).*$/i, '')
+        .replace(/\s+\d{6}\s+\d{10}\s+\d{4}.*$/, '')
+        .replace(/\s+DATUM PROVEDENÍ TRANSAKCE:.*$/i, '')
+        .replace(/\s*\/[A-Za-zÀ-ž\s.-]+$/, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
     function parseCsvStatement(text) {
       const lines = text.split(/\r?\n/).filter(l => l.trim());
       const results = [];
-      const headerIdx = lines.findIndex(l => l.includes('#Datum') && l.includes('#Částka'));
-      if (headerIdx !== -1) {
-        for (let i = headerIdx + 1; i < lines.length; i++) {
+
+      // Formát 1: mBank "Seznam operací" (#Datum operace;#Popis operace;#Účet;#Kategorie;#Částka;)
+      const opsHeaderIdx = lines.findIndex(l => l.includes('#Datum operace') && l.includes('#Popis operace'));
+      if (opsHeaderIdx !== -1) {
+        for (let i = opsHeaderIdx + 1; i < lines.length; i++) {
+          const parts = lines[i].split(';').map(p => p.trim().replace(/^"|"$/g, '').trim());
+          if (parts.length < 5) continue;
+          const dateIso = normalizeDateString(parts[0]);
+          const amount = parseCzechAmount(parts[4]);
+          if (!dateIso || isNaN(amount) || amount === 0) continue;
+          const title = cleanMBankOperationTitle(parts[1]) || parts[1] || 'Transakce';
+          results.push({ date: dateIso, title, amount });
+        }
+        return results;
+      }
+
+      // Formát 2: mBank "Výpis z účtu" (#Datum zaúčtování transakce;...;#Částka transakce;)
+      const stmtHeaderIdx = lines.findIndex(l => l.includes('#Datum') && l.includes('#Částka'));
+      if (stmtHeaderIdx !== -1) {
+        for (let i = stmtHeaderIdx + 1; i < lines.length; i++) {
           const parts = lines[i].split(';').map(p => p.trim().replace(/^"|"$/g, '').trim());
           if (parts.length < 10) continue;
           const dateIso = normalizeDateString(parts[0]) || normalizeDateString(parts[1]);
           const amount = parseCzechAmount(parts[9]);
           if (!dateIso || isNaN(amount) || amount === 0) continue;
           const txType = parts[2] || '', msg = parts[3] || '', counterparty = parts[4] || '';
-          let cleanMsg = msg.replace(/\s+DATUM PROVEDENÍ TRANSAKCE:.*$/i, '').replace(/\s*\/[A-Za-zÀ-ž\s.-]+$/, '').replace(/\s+/g, ' ').trim();
+          let cleanMsg = cleanMBankOperationTitle(msg);
           let title = counterparty.trim() || cleanMsg || txType || 'Transakce';
-          if (counterparty.trim() && cleanMsg && cleanMsg.toLowerCase() !== counterparty.trim().toLowerCase()) title = `${counterparty.trim()} (${cleanMsg})`;
+          if (counterparty.trim() && cleanMsg && cleanMsg.toLowerCase() !== counterparty.trim().toLowerCase()) {
+            title = `${counterparty.trim()} (${cleanMsg})`;
+          }
           results.push({ date: dateIso, title, amount });
         }
         return results;
       }
+
+      // Formát 3: Obecný CSV parser (ČSOB a ostatní)
       lines.forEach(line => {
         const sep = line.includes(';') ? ';' : ',';
         const parts = line.split(sep).map(p => p.trim().replace(/^"|"$/g, '').trim());
