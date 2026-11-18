@@ -4,10 +4,80 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#10b981" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Moje Finance" />
   <title>Moje Finance</title>
-  <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Moje%20Finance%22%2C%22short_name%22%3A%22Finance%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f8fafc%22%2C%22theme_color%22%3A%22%2310b981%22%7D" />
+  <link id="faviconLink" rel="icon" type="image/png" />
+  <link id="appleTouchIconLink" rel="apple-touch-icon" />
+  <link id="manifestLink" rel="manifest" />
+  <script>
+    // Automatické vygenerování ostrých PNG ikon (192x192 a 512x512) a PWA manifestu
+    (function initPwaIcons() {
+      function createIconDataUrl(size) {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Zelené pozadí se zaoblenými rohy pro náhledy
+        ctx.fillStyle = '#10b981';
+        ctx.fillRect(0, 0, size, size);
+
+        // Jemný světlejší horní odlesk
+        const grad = ctx.createLinearGradient(0, 0, size, size);
+        grad.addColorStop(0, '#34d399');
+        grad.addColorStop(1, '#059669');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, size, size);
+
+        // Text "Kč" uprostřed
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `800 ${Math.round(size * 0.44)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Kč', size / 2, size * 0.53);
+
+        return canvas.toDataURL('image/png');
+      }
+
+      const icon192 = createIconDataUrl(192);
+      const icon512 = createIconDataUrl(512);
+
+      document.getElementById('faviconLink').href = icon192;
+      document.getElementById('appleTouchIconLink').href = icon192;
+
+      const manifestObj = {
+        name: 'Moje Finance',
+        short_name: 'Finance',
+        start_url: window.location.href.split('?')[0],
+        scope: window.location.origin + '/Moje-v-daje-/',
+        display: 'standalone',
+        orientation: 'portrait',
+        background_color: '#f8fafc',
+        theme_color: '#10b981',
+        icons: [
+          { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+          { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+        ]
+      };
+
+      const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+      document.getElementById('manifestLink').href = URL.createObjectURL(manifestBlob);
+
+      // Minimální Service Worker pro podporu instalace jako nativní PWA aplikace
+      if ('serviceWorker' in navigator) {
+        const swCode = `
+          self.addEventListener('install', (e) => self.skipWaiting());
+          self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
+          self.addEventListener('fetch', () => {});
+        `;
+        const swBlob = new Blob([swCode], { type: 'application/javascript' });
+        navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+      }
+    })();
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -159,7 +229,6 @@
           </div>
         </div>
 
-        <!-- Měsíční průměry -->
         <div class="grid grid-cols-3 gap-2">
           <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
             <div class="text-[10px] text-slate-400 font-medium">Prům. příjem/měs.</div>
@@ -175,7 +244,6 @@
           </div>
         </div>
 
-        <!-- Graf příjmů a výdajů po měsících -->
         <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
           <div class="flex items-center justify-between mb-3">
             <h2 class="font-bold text-sm text-slate-700">Příjmy vs. výdaje po měsících</h2>
@@ -186,7 +254,6 @@
           </div>
         </div>
 
-        <!-- Celkové výdaje po kategoriích za celou dobu -->
         <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
           <div class="flex items-center justify-between">
             <h2 class="font-bold text-sm text-slate-700">Celkové výdaje podle kategorií</h2>
@@ -348,7 +415,7 @@
       </section>
     </main>
 
-    <!-- Spodní navigace (5 záložek) -->
+    <!-- Spodní navigace -->
     <nav class="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-100 safe-bottom">
       <div class="max-w-md mx-auto grid grid-cols-5 h-16">
         <button data-tab="dashboard" class="nav-btn flex flex-col items-center justify-center text-emerald-600 font-bold">
@@ -375,7 +442,7 @@
     </nav>
   </div>
 
-  <!-- Modal pro detail plateb (kategorie, příjmy nebo výdaje) -->
+  <!-- Modal pro detail plateb -->
   <div id="categoryDetailModal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-4">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3 shadow-xl max-h-[82vh] flex flex-col">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -437,7 +504,7 @@
       setAuthStatus('Chyba: Prohlížeč zablokoval skript Supabase. Vypni Brave Shields pro tuto stránku.', 'error');
     } else {
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      setAuthStatus('Připraveno k přihlášení (verze 16).', 'ok');
+      setAuthStatus('Připraveno k přihlášení (verze 17).', 'ok');
     }
 
     if (window.pdfjsLib) {
@@ -812,7 +879,6 @@
       refreshAll();
     });
 
-    // --- VYKRESLENÍ SEZNAMU V MODALU ---
     function renderDetailModalItems(txs) {
       const listEl = document.getElementById('catDetailList');
       if (!txs.length) {
@@ -839,7 +905,6 @@
       }).join('');
     }
 
-    // --- DETAIL PŘÍJMŮ NEBO VÝDAJŮ ---
     window.openFlowDetail = function(flowType, scope = 'month') {
       const isIncome = flowType === 'income';
       const txs = state.transactions
@@ -859,7 +924,6 @@
       document.getElementById('categoryDetailModal').classList.remove('hidden');
     };
 
-    // --- DETAIL KATEGORIE ---
     window.openCategoryDetail = function(catId, scope = 'month') {
       const cat = getCategory(catId);
       const txs = state.transactions
@@ -885,7 +949,6 @@
       document.getElementById('categoryDetailModal').classList.add('hidden');
     });
 
-    // --- CELKOVÝ PŘEHLED FINANCÍ ---
     function renderTotalOverview() {
       const allTxs = state.transactions;
       let totalIncome = 0;
@@ -1001,7 +1064,6 @@
       }
     }
 
-    // --- MĚSÍČNÍ DASHBOARD & GRAFY ---
     function renderDashboard() {
       updateMonthLabel();
       const monthTxs = state.transactions.filter(t => t.date.startsWith(state.selectedMonth));
@@ -1283,7 +1345,6 @@
       return results;
     }
 
-    // --- PDF PARSER PRO ČSOB I MBANK ---
     async function parsePdfStatement(file, bank = 'mBank') {
       const arrayBuffer = await file.arrayBuffer();
       let pdf;
@@ -1312,13 +1373,11 @@
         });
       }
 
-      // Detekce ČSOB PDF výpisu ("Přehled pohybů na účtu od 1. 10. 2026...")
       const isCsob = bank === 'ČSOB' || fullLines.some(l => l.includes('Přehled pohybů na účtu') || l.includes('Označení platby'));
       if (isCsob) {
         return parseCsobPdfLines(fullLines);
       }
 
-      // mBank PDF výpis
       const results = [];
       const rowStartRegex = /^(\d{1,6})\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{2}\.\d{2}\.\d{4})\s+(.*)$/;
       let blocks = [], currentBlock = null;
@@ -1347,7 +1406,6 @@
     }
 
     function parseCsobPdfLines(lines) {
-      // Zjistíme rok z hlavičky "od 1. 10. 2026 do 31. 10. 2026"
       let defaultYear = String(new Date().getFullYear());
       for (const l of lines) {
         const ym = l.match(/od\s+\d{1,2}\.\s*\d{1,2}\.\s*(\d{4})/i);
@@ -1373,16 +1431,13 @@
       const results = [];
       blocks.forEach(block => {
         const firstLine = block.lines[0];
-        // Na prvním řádku ČSOB bývá na konci: [Identifikace] [Částka] [Zůstatek] (např. "3497 -398,00 1 113,27")
         const amountsMatch = firstLine.match(/(-?\d[\d\s]*,\d{2})\s+(-?\d[\d\s]*,\d{2})\s*$/);
         if (!amountsMatch) return;
 
         const amount = parseFloat(amountsMatch[1].replace(/\s/g, '').replace(',', '.'));
         if (isNaN(amount) || amount === 0) return;
 
-        // Odstraníme identifikaci + částku + zůstatek z prvního řádku
         let headText = firstLine.slice(0, amountsMatch.index).replace(/\s+\d{3,10}\s*$/, '').trim();
-        // U převodů je na prvním řádku za "Bezhotovostní převod EB" rovnou jméno protistrany (např. "KRISTÝNA KOČICOVÁ")
         let counterpartyOnFirstLine = headText
           .replace(/^(Transakce platební kartou|Bezhotovostní převod EB|Odchozí úhrada okamžitá|Příchozí úhrada okamžitá|Bezhotovostní příjem|Poplatek)\s*/i, '')
           .trim();
@@ -1395,7 +1450,6 @@
           if (l.startsWith('Místo:')) {
             placeTitle = l.replace(/^Místo:\s*/i, '').trim();
           } else if (!l.startsWith('Částka:') && !/^\d{6}-\d+\/\d+$/.test(l) && !/^\d+\/\d{4}$/.test(l) && !/^\d{6,10}\s+\d{4}/.test(l) && !/^\d{4}$/.test(l)) {
-            // Ignorujeme čistá čísla účtů, VS/KS/SS a řádek "Částka: ...", bereme textovou poznámku (např. "kalhoty bershka")
             const cleanNote = l.replace(/\b\d{6,10}\b/g, '').replace(/\b\d{4}\b/g, '').trim();
             if (cleanNote.length > 1 && !['Praha', 'BRNO', 'Brno', 'Praha, Vinohr'].includes(cleanNote)) {
               noteLines.push(cleanNote);
