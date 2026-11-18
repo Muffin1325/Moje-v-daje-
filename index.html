@@ -12,6 +12,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    if (!window.supabase) {
+      document.write('<script src="https://unpkg.com/@supabase/supabase-js@2"><\/script>');
+    }
+  </script>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -29,7 +34,7 @@
 
   <!-- PŘIHLAŠOVACÍ OBRAZOVKA (SUPABASE) -->
   <div id="authScreen" class="fixed inset-0 z-50 bg-slate-50 flex flex-col items-center justify-center p-5">
-    <div class="w-full max-w-sm bg-white rounded-3xl p-6 shadow-lg border border-slate-100 space-y-5">
+    <form id="authForm" class="w-full max-w-sm bg-white rounded-3xl p-6 shadow-lg border border-slate-100 space-y-5">
       <div class="flex flex-col items-center text-center">
         <div class="w-14 h-14 rounded-2xl bg-emerald-500 flex items-center justify-center text-white text-2xl font-extrabold shadow-md mb-3">
           Kč
@@ -41,25 +46,25 @@
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">E-mail</label>
-          <input id="authEmail" type="email" placeholder="tvuj@email.cz" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500" />
+          <input id="authEmail" type="email" required placeholder="tvuj@email.cz" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500" />
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">Heslo (min. 6 znaků)</label>
-          <input id="authPassword" type="password" placeholder="••••••" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500" />
+          <input id="authPassword" type="password" required placeholder="••••••" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500" />
         </div>
       </div>
 
       <div id="authErrorMsg" class="hidden text-xs text-rose-600 bg-rose-50 p-2.5 rounded-xl font-medium"></div>
 
       <div class="space-y-2 pt-1">
-        <button id="loginBtn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-sm shadow-sm active:scale-95 transition">
+        <button type="submit" id="loginBtn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-sm shadow-sm active:scale-95 transition">
           Přihlásit se
         </button>
-        <button id="signupBtn" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-xs active:scale-95 transition">
+        <button type="button" id="signupBtn" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-xs active:scale-95 transition">
           Vytvořit nový účet (první přihlášení)
         </button>
       </div>
-    </div>
+    </form>
   </div>
 
   <!-- HLAVNÍ APLIKACE (SKRYTÁ DO PŘIHLÁŠENÍ) -->
@@ -352,10 +357,20 @@
   </div>
 
   <script>
-    // --- SUPABASE KONFIGURACE ---
     const SUPABASE_URL = 'https://pzlxlzexqaodtzhusqfx.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_6FUK7rIGILicuuwXoMZovw_VTybzeka';
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    function showAuthError(msg) {
+      const el = document.getElementById('authErrorMsg');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    if (!window.supabase) {
+      showAuthError('Prohlížeč zablokoval načtení Supabase (vypni Brave Shields pro tuto stránku a obnov ji).');
+    }
+
+    const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -411,7 +426,7 @@
       localStorage.setItem('mf_rules', JSON.stringify(state.rules));
       localStorage.setItem('mf_transactions', JSON.stringify(state.transactions));
 
-      if (!currentUser) return;
+      if (!currentUser || !sb) return;
       setSyncStatus('⏳ Ukládám do cloudu...');
       const payload = {
         categories: state.categories,
@@ -429,14 +444,14 @@
 
       if (error) {
         console.error('Chyba synchronizace:', error);
-        setSyncStatus('⚠️ Chyba synchronizace', true);
+        setSyncStatus('⚠️ Chyba DB: ' + error.message, true);
       } else {
         setSyncStatus('☁️ Synchronizováno');
       }
     }
 
     async function loadFromCloud() {
-      if (!currentUser) return;
+      if (!currentUser || !sb) return;
       setSyncStatus('⏳ Načítám z cloudu...');
 
       const { data, error } = await sb
@@ -447,12 +462,12 @@
 
       if (error) {
         console.error('Chyba načítání:', error);
-        setSyncStatus('⚠️ Offline režim', true);
+        setSyncStatus('⚠️ Chybí tabulka v Supabase', true);
+        alert('Chyba databáze: ' + error.message + '\n\nZkontroluj, zda jsi v Supabase SQL Editoru spustil příkaz pro vytvoření tabulky user_finance_data.');
         return;
       }
 
       if (data && data.payload) {
-        // V cloudu už existují data -> načteme je do zařízení
         state.categories = data.payload.categories || DEFAULT_CATEGORIES;
         state.rules = data.payload.rules || DEFAULT_RULES;
         state.transactions = data.payload.transactions || [];
@@ -461,7 +476,6 @@
         localStorage.setItem('mf_transactions', JSON.stringify(state.transactions));
         setSyncStatus('☁️ Synchronizováno');
       } else if (state.transactions.length > 0) {
-        // V cloudu zatím nic není, ale v telefonu/PC už jsou lokální data -> nahrajeme je do cloudu
         await saveState();
       } else {
         setSyncStatus('☁️ Připraveno');
@@ -475,38 +489,70 @@
     }
 
     // --- AUTENTIZACE ---
-    function showAuthError(msg) {
-      const el = document.getElementById('authErrorMsg');
-      el.textContent = msg;
-      el.classList.remove('hidden');
+    function setAuthLoading(isLoading) {
+      const loginBtn = document.getElementById('loginBtn');
+      const signupBtn = document.getElementById('signupBtn');
+      loginBtn.disabled = isLoading;
+      signupBtn.disabled = isLoading;
+      loginBtn.textContent = isLoading ? 'Přihlašuji...' : 'Přihlásit se';
     }
 
-    document.getElementById('loginBtn').addEventListener('click', async () => {
+    async function handleLogin(e) {
+      if (e) e.preventDefault();
+      if (!sb) return showAuthError('Supabase knihovna se nenačetla. Vypni Brave Shields.');
       const email = document.getElementById('authEmail').value.trim();
       const password = document.getElementById('authPassword').value;
       document.getElementById('authErrorMsg').classList.add('hidden');
       if (!email || !password) return showAuthError('Vyplň e-mail a heslo.');
 
-      const { data, error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) return showAuthError('Chyba přihlášení: ' + error.message);
-      onUserAuthenticated(data.user);
-    });
+      setAuthLoading(true);
+      try {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            showAuthError('Účet nenalezen nebo špatné heslo. Pokud se přihlašuješ poprvé, klikni na „Vytvořit nový účet“ níže.');
+          } else {
+            showAuthError('Chyba přihlášení: ' + error.message);
+          }
+        } else if (data && data.user) {
+          await onUserAuthenticated(data.user);
+        }
+      } catch (err) {
+        showAuthError('Síťová chyba (zkontroluj Brave Shields): ' + err.message);
+      } finally {
+        setAuthLoading(false);
+      }
+    }
 
-    document.getElementById('signupBtn').addEventListener('click', async () => {
+    async function handleSignup() {
+      if (!sb) return showAuthError('Supabase knihovna se nenačetla. Vypni Brave Shields.');
       const email = document.getElementById('authEmail').value.trim();
       const password = document.getElementById('authPassword').value;
       document.getElementById('authErrorMsg').classList.add('hidden');
       if (!email || password.length < 6) return showAuthError('Zadej platný e-mail a heslo (alespoň 6 znaků).');
 
-      const { data, error } = await sb.auth.signUp({ email, password });
-      if (error) return showAuthError('Chyba registrace: ' + error.message);
-      if (data.user) {
-        onUserAuthenticated(data.user);
+      setAuthLoading(true);
+      try {
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) {
+          showAuthError('Chyba registrace: ' + error.message);
+        } else if (data && !data.session) {
+          showAuthError('Účet byl vytvořen, ale Supabase vyžaduje potvrzení e-mailu! Potvrď odkaz v e-mailu (nebo v Supabase -> Authentication -> Providers -> Email vypni „Confirm email“).');
+        } else if (data && data.user) {
+          await onUserAuthenticated(data.user);
+        }
+      } catch (err) {
+        showAuthError('Síťová chyba (zkontroluj Brave Shields): ' + err.message);
+      } finally {
+        setAuthLoading(false);
       }
-    });
+    }
+
+    document.getElementById('authForm').addEventListener('submit', handleLogin);
+    document.getElementById('signupBtn').addEventListener('click', handleSignup);
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await sb.auth.signOut();
+      if (sb) await sb.auth.signOut();
       currentUser = null;
       document.getElementById('appContainer').classList.add('hidden');
       document.getElementById('authScreen').classList.remove('hidden');
@@ -522,8 +568,8 @@
       await loadFromCloud();
     }
 
-    // Automatická kontrola přihlášení při otevření stránky
     (async () => {
+      if (!sb) return;
       const { data: { session } } = await sb.auth.getSession();
       if (session && session.user) {
         onUserAuthenticated(session.user);
@@ -860,4 +906,156 @@
         console.error(err);
         alert('Chyba při čtení souboru: ' + err.message);
       }
-      e.target
+      e.target.value = '';
+    });
+
+    function readFileTextSmart(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsText(file, 'windows-1250');
+      });
+    }
+
+    function normalizeDateString(raw) {
+      const clean = raw.trim();
+      let m = clean.match(/^(\d{2})[-.](\d{2})[-.](\d{4})$/);
+      if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+      m = clean.match(/^(\d{4})[-.](\d{2})[-.](\d{2})$/);
+      if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+      return null;
+    }
+
+    function parseCzechAmount(raw) {
+      if (!raw) return NaN;
+      const cleaned = raw
+        .replace(/CZK|EUR|Kč/gi, '')
+        .replace(/[\s\u00A0\u202F]/g, '')
+        .replace(',', '.')
+        .trim();
+      if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return NaN;
+      return parseFloat(cleaned);
+    }
+
+    function parseCsvStatement(text) {
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      const results = [];
+      const headerIdx = lines.findIndex(l => l.includes('#Datum') && l.includes('#Částka'));
+
+      if (headerIdx !== -1) {
+        for (let i = headerIdx + 1; i < lines.length; i++) {
+          const parts = lines[i].split(';').map(p => p.trim().replace(/^"|"$/g, '').trim());
+          if (parts.length < 10) continue;
+
+          const dateIso = normalizeDateString(parts[0]) || normalizeDateString(parts[1]);
+          const amount = parseCzechAmount(parts[9]);
+          if (!dateIso || isNaN(amount) || amount === 0) continue;
+
+          const txType = parts[2] || '';
+          const msg = parts[3] || '';
+          const counterparty = parts[4] || '';
+
+          let cleanMsg = msg
+            .replace(/\s+DATUM PROVEDENÍ TRANSAKCE:.*$/i, '')
+            .replace(/\s*\/[A-Za-zÀ-ž\s.-]+$/, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          let title = counterparty.trim() || cleanMsg || txType || 'Transakce';
+          if (counterparty.trim() && cleanMsg && cleanMsg.toLowerCase() !== counterparty.trim().toLowerCase()) {
+            title = `${counterparty.trim()} (${cleanMsg})`;
+          }
+
+          results.push({ date: dateIso, title, amount });
+        }
+        return results;
+      }
+
+      lines.forEach(line => {
+        const sep = line.includes(';') ? ';' : ',';
+        const parts = line.split(sep).map(p => p.trim().replace(/^"|"$/g, '').trim());
+        let dateIso = null;
+        let amount = NaN;
+        let titleParts = [];
+
+        parts.forEach(p => {
+          const d = normalizeDateString(p);
+          if (d && !dateIso) { dateIso = d; return; }
+          const amt = parseCzechAmount(p);
+          if (!isNaN(amt) && isNaN(amount) && /[,.]\d{2}/.test(p)) { amount = amt; return; }
+          if (p.length > 2 && !/^\d+$/.test(p) && !/^'?\d+-\d+\/\d+'?$/.test(p)) { titleParts.push(p); }
+        });
+
+        if (dateIso && !isNaN(amount) && amount !== 0) {
+          results.push({ date: dateIso, title: titleParts.slice(0, 2).join(' - ') || 'Platba', amount });
+        }
+      });
+
+      return results;
+    }
+
+    async function parsePdfStatement(file, bank) {
+      const arrayBuffer = await file.arrayBuffer();
+      let pdf;
+      try {
+        pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      } catch (err) {
+        if (err.name === 'PasswordException') {
+          const pwd = prompt('Tento PDF výpis je zaheslovaný. Zadej heslo:');
+          if (!pwd) throw new Error('Nebylo zadáno heslo.');
+          pdf = await pdfjsLib.getDocument({ data: arrayBuffer, password: pwd }).promise;
+        } else {
+          throw err;
+        }
+      }
+
+      let fullLines = [];
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const content = await page.getTextContent();
+        const rows = {};
+        content.items.forEach(item => {
+          const y = Math.round(item.transform[5] / 4) * 4;
+          if (!rows[y]) rows[y] = [];
+          rows[y].push({ x: item.transform[4], str: item.str });
+        });
+        const sortedY = Object.keys(rows).map(Number).sort((a, b) => b - a);
+        sortedY.forEach(y => {
+          const lineStr = rows[y].sort((a, b) => a.x - b.x).map(i => i.str).join(' ').replace(/\s+/g, ' ').trim();
+          if (lineStr) fullLines.push(lineStr);
+        });
+      }
+
+      const results = [];
+      const rowStartRegex = /^(\d{1,6})\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{2}\.\d{2}\.\d{4})\s+(.*)$/;
+      let blocks = [];
+      let currentBlock = null;
+
+      fullLines.forEach(line => {
+        const match = line.match(rowStartRegex);
+        if (match) {
+          if (currentBlock) blocks.push(currentBlock);
+          currentBlock = { dateRaw: match[2], lines: [match[4]] };
+        } else if (currentBlock) {
+          if (!line.startsWith('Počáteční zůstatek') && !line.startsWith('Konečný zůstatek') && !line.startsWith('Strana ')) {
+            currentBlock.lines.push(line);
+          }
+        }
+      });
+      if (currentBlock) blocks.push(currentBlock);
+
+      blocks.forEach(block => {
+        const firstLine = block.lines[0];
+        const amountsMatch = firstLine.match(/(-?\d[\d\s]*,\d{2})\s+(-?\d[\d\s]*,\d{2})\s*$/);
+        let amount = 0;
+        let descFirstLine = firstLine;
+
+        if (amountsMatch) {
+          amount = parseFloat(amountsMatch[1].replace(/\s/g, '').replace(',', '.'));
+          descFirstLine = firstLine.slice(0, amountsMatch.index).trim();
+        }
+
+        let merchant = descFirstLine;
+        for (let i = 1; i < block.lines.length; i++) {
+          const l = block.lines[i];
+          if (l.startsWith('DATUM PROVEDENÍ') ||
