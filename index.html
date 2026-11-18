@@ -222,7 +222,7 @@
             <span class="text-xl">📄</span>
             <div>
               <h2 class="font-bold text-sm text-slate-800">Nahrát výpis z banky (CSV / PDF)</h2>
-              <p class="text-xs text-slate-400">Podporuje výpisy i seznam operací z mBank a ČSOB</p>
+              <p class="text-xs text-slate-400">Podporuje výpisy z mBank (CSV/PDF) i ČSOB (PDF/CSV)</p>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-2">
@@ -437,7 +437,7 @@
       setAuthStatus('Chyba: Prohlížeč zablokoval skript Supabase. Vypni Brave Shields pro tuto stránku.', 'error');
     } else {
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      setAuthStatus('Připraveno k přihlášení (verze 15).', 'ok');
+      setAuthStatus('Připraveno k přihlášení (verze 16).', 'ok');
     }
 
     if (window.pdfjsLib) {
@@ -587,7 +587,7 @@
     let monthlyTrendChartInstance = null;
     let manualType = 'expense';
     let editingTxId = null;
-    let activeDetailContext = null; // { mode: 'category' | 'flow', id: catId | 'income' | 'expense', scope: 'month' | 'all' }
+    let activeDetailContext = null;
 
     function setSyncStatus(text, isError = false) {
       const el = document.getElementById('syncStatus');
@@ -839,7 +839,7 @@
       }).join('');
     }
 
-    // --- DETAIL PŘÍJMŮ NEBO VÝDAJŮ (PO KLIKNUTÍ NA KARTU PŘÍJMY / VÝDAJE) ---
+    // --- DETAIL PŘÍJMŮ NEBO VÝDAJŮ ---
     window.openFlowDetail = function(flowType, scope = 'month') {
       const isIncome = flowType === 'income';
       const txs = state.transactions
@@ -885,7 +885,7 @@
       document.getElementById('categoryDetailModal').classList.add('hidden');
     });
 
-    // --- CELKOVÝ PŘEHLED FINANCÍ (VŠECHNY MĚSÍCE) ---
+    // --- CELKOVÝ PŘEHLED FINANCÍ ---
     function renderTotalOverview() {
       const allTxs = state.transactions;
       let totalIncome = 0;
@@ -1178,7 +1178,7 @@
       const bank = document.getElementById('importBankSelect').value;
       try {
         let parsed = [];
-        if (file.name.toLowerCase().endsWith('.pdf')) parsed = await parsePdfStatement(file);
+        if (file.name.toLowerCase().endsWith('.pdf')) parsed = await parsePdfStatement(file, bank);
         else parsed = parseCsvStatement(await readFileTextSmart(file));
 
         if (!parsed.length) return alert('Nepodařilo se rozpoznat žádné transakce.');
@@ -1283,7 +1283,8 @@
       return results;
     }
 
-    async function parsePdfStatement(file) {
+    // --- PDF PARSER PRO ČSOB I MBANK ---
+    async function parsePdfStatement(file, bank = 'mBank') {
       const arrayBuffer = await file.arrayBuffer();
       let pdf;
       try { pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise; }
@@ -1294,6 +1295,7 @@
           pdf = await pdfjsLib.getDocument({ data: arrayBuffer, password: pwd }).promise;
         } else throw err;
       }
+
       let fullLines = [];
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         const page = await pdf.getPage(pageNum);
@@ -1309,6 +1311,14 @@
           if (lineStr) fullLines.push(lineStr);
         });
       }
+
+      // Detekce ČSOB PDF výpisu ("Přehled pohybů na účtu od 1. 10. 2026...")
+      const isCsob = bank === 'ČSOB' || fullLines.some(l => l.includes('Přehled pohybů na účtu') || l.includes('Označení platby'));
+      if (isCsob) {
+        return parseCsobPdfLines(fullLines);
+      }
+
+      // mBank PDF výpis
       const results = [];
       const rowStartRegex = /^(\d{1,6})\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{2}\.\d{2}\.\d{4})\s+(.*)$/;
       let blocks = [], currentBlock = null;
@@ -1333,6 +1343,80 @@
         const [dd, mm, yyyy] = block.dateRaw.split('.');
         if (amount !== 0 && yyyy) results.push({ date: `${yyyy}-${mm}-${dd}`, title: merchant || descFirstLine, amount });
       });
+      return results;
+    }
+
+    function parseCsobPdfLines(lines) {
+      // Zjistíme rok z hlavičky "od 1. 10. 2026 do 31. 10. 2026"
+      let defaultYear = String(new Date().getFullYear());
+      for (const l of lines) {
+        const ym = l.match(/od\s+\d{1,2}\.\s*\d{1,2}\.\s*(\d{4})/i);
+        if (ym) { defaultYear = ym[1]; break; }
+      }
+
+      const csobStartRegex = /^(\d{2})\.(\d{2})\.\s+(.*)$/;
+      let blocks = [];
+      let currentBlock = null;
+
+      lines.forEach(line => {
+        if (line.startsWith('Datum Označení') || line.startsWith('Valuta Protiúčet') || line.startsWith('Strana ')) return;
+        const m = line.match(csobStartRegex);
+        if (m) {
+          if (currentBlock) blocks.push(currentBlock);
+          currentBlock = { dd: m[1], mm: m[2], lines: [m[3]] };
+        } else if (currentBlock) {
+          currentBlock.lines.push(line);
+        }
+      });
+      if (currentBlock) blocks.push(currentBlock);
+
+      const results = [];
+      blocks.forEach(block => {
+        const firstLine = block.lines[0];
+        // Na prvním řádku ČSOB bývá na konci: [Identifikace] [Částka] [Zůstatek] (např. "3497 -398,00 1 113,27")
+        const amountsMatch = firstLine.match(/(-?\d[\d\s]*,\d{2})\s+(-?\d[\d\s]*,\d{2})\s*$/);
+        if (!amountsMatch) return;
+
+        const amount = parseFloat(amountsMatch[1].replace(/\s/g, '').replace(',', '.'));
+        if (isNaN(amount) || amount === 0) return;
+
+        // Odstraníme identifikaci + částku + zůstatek z prvního řádku
+        let headText = firstLine.slice(0, amountsMatch.index).replace(/\s+\d{3,10}\s*$/, '').trim();
+        // U převodů je na prvním řádku za "Bezhotovostní převod EB" rovnou jméno protistrany (např. "KRISTÝNA KOČICOVÁ")
+        let counterpartyOnFirstLine = headText
+          .replace(/^(Transakce platební kartou|Bezhotovostní převod EB|Odchozí úhrada okamžitá|Příchozí úhrada okamžitá|Bezhotovostní příjem|Poplatek)\s*/i, '')
+          .trim();
+
+        let placeTitle = '';
+        let noteLines = [];
+
+        for (let i = 1; i < block.lines.length; i++) {
+          const l = block.lines[i];
+          if (l.startsWith('Místo:')) {
+            placeTitle = l.replace(/^Místo:\s*/i, '').trim();
+          } else if (!l.startsWith('Částka:') && !/^\d{6}-\d+\/\d+$/.test(l) && !/^\d+\/\d{4}$/.test(l) && !/^\d{6,10}\s+\d{4}/.test(l) && !/^\d{4}$/.test(l)) {
+            // Ignorujeme čistá čísla účtů, VS/KS/SS a řádek "Částka: ...", bereme textovou poznámku (např. "kalhoty bershka")
+            const cleanNote = l.replace(/\b\d{6,10}\b/g, '').replace(/\b\d{4}\b/g, '').trim();
+            if (cleanNote.length > 1 && !['Praha', 'BRNO', 'Brno', 'Praha, Vinohr'].includes(cleanNote)) {
+              noteLines.push(cleanNote);
+            }
+          }
+        }
+
+        let title = placeTitle || counterpartyOnFirstLine || headText || 'ČSOB Platba';
+        if (!placeTitle && counterpartyOnFirstLine && noteLines.length > 0) {
+          title = `${counterpartyOnFirstLine} (${noteLines.join(' ')})`;
+        } else if (!placeTitle && !counterpartyOnFirstLine && noteLines.length > 0) {
+          title = noteLines.join(' ');
+        }
+
+        results.push({
+          date: `${defaultYear}-${block.mm}-${block.dd}`,
+          title,
+          amount
+        });
+      });
+
       return results;
     }
 
