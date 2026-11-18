@@ -13,7 +13,6 @@
   <link id="appleTouchIconLink" rel="apple-touch-icon" />
   <link id="manifestLink" rel="manifest" />
   <script>
-    // Automatické vygenerování ostrých PNG ikon (192x192 a 512x512) a PWA manifestu
     (function initPwaIcons() {
       function createIconDataUrl(size) {
         const canvas = document.createElement('canvas');
@@ -21,18 +20,15 @@
         canvas.height = size;
         const ctx = canvas.getContext('2d');
 
-        // Zelené pozadí se zaoblenými rohy pro náhledy
         ctx.fillStyle = '#10b981';
         ctx.fillRect(0, 0, size, size);
 
-        // Jemný světlejší horní odlesk
         const grad = ctx.createLinearGradient(0, 0, size, size);
         grad.addColorStop(0, '#34d399');
         grad.addColorStop(1, '#059669');
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, size, size);
 
-        // Text "Kč" uprostřed
         ctx.fillStyle = '#ffffff';
         ctx.font = `800 ${Math.round(size * 0.44)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
         ctx.textAlign = 'center';
@@ -66,7 +62,6 @@
       const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
       document.getElementById('manifestLink').href = URL.createObjectURL(manifestBlob);
 
-      // Minimální Service Worker pro podporu instalace jako nativní PWA aplikace
       if ('serviceWorker' in navigator) {
         const swCode = `
           self.addEventListener('install', (e) => self.skipWaiting());
@@ -504,7 +499,7 @@
       setAuthStatus('Chyba: Prohlížeč zablokoval skript Supabase. Vypni Brave Shields pro tuto stránku.', 'error');
     } else {
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      setAuthStatus('Připraveno k přihlášení (verze 17).', 'ok');
+      setAuthStatus('Připraveno k přihlášení (verze 18).', 'ok');
     }
 
     if (window.pdfjsLib) {
@@ -1431,12 +1426,15 @@
       const results = [];
       blocks.forEach(block => {
         const firstLine = block.lines[0];
-        const amountsMatch = firstLine.match(/(-?\d[\d\s]*,\d{2})\s+(-?\d[\d\s]*,\d{2})\s*$/);
+        // Na konci prvního řádku jsou 3 sloupce: [Identifikace] [Částka] [Zůstatek]
+        // Částka je bud' záporná (-398,00), nebo kladná (1–3 číslice + případné trojice číslic oddělené mezerou + ,XX), oddělená mezerou od identifikace
+        const amountsMatch = firstLine.match(/(?:^|\s)(-?\d{1,3}(?:\s\d{3})*,\d{2})\s+(-?\d{1,3}(?:\s\d{3})*,\d{2})\s*$/);
         if (!amountsMatch) return;
 
         const amount = parseFloat(amountsMatch[1].replace(/\s/g, '').replace(',', '.'));
         if (isNaN(amount) || amount === 0) return;
 
+        // Odstraníme identifikaci + částku + zůstatek z prvního řádku
         let headText = firstLine.slice(0, amountsMatch.index).replace(/\s+\d{3,10}\s*$/, '').trim();
         let counterpartyOnFirstLine = headText
           .replace(/^(Transakce platební kartou|Bezhotovostní převod EB|Odchozí úhrada okamžitá|Příchozí úhrada okamžitá|Bezhotovostní příjem|Poplatek)\s*/i, '')
