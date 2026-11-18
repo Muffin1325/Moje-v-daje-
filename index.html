@@ -76,7 +76,7 @@
           <div id="syncStatus" class="text-[10px] text-emerald-600 font-medium">☁️ Synchronizováno</div>
         </div>
       </div>
-      <div class="flex items-center gap-1 bg-slate-100 rounded-full px-2 py-1">
+      <div id="monthSelectorWrap" class="flex items-center gap-1 bg-slate-100 rounded-full px-2 py-1">
         <button id="prevMonth" class="p-1 text-slate-500 hover:text-slate-900 active:scale-90">◀</button>
         <span id="currentMonthLabel" class="text-xs font-semibold px-2 min-w-[90px] text-center text-slate-700">Listopad 2026</span>
         <button id="nextMonth" class="p-1 text-slate-500 hover:text-slate-900 active:scale-90">▶</button>
@@ -84,16 +84,24 @@
     </header>
 
     <main class="max-w-md mx-auto px-4 pt-4">
-      <!-- TAB 1: PŘEHLED -->
+      <!-- TAB 1: MĚSÍČNÍ PŘEHLED -->
       <section id="tab-dashboard" class="space-y-4">
         <div class="grid grid-cols-2 gap-3">
-          <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-100">
-            <div class="text-xs text-slate-400 font-medium">Příjmy</div>
+          <div onclick="openFlowDetail('income', 'month')" class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-100 cursor-pointer hover:border-emerald-200 active:bg-emerald-50/40 transition">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400 font-medium">Příjmy</span>
+              <span class="text-xs text-emerald-500 font-bold">›</span>
+            </div>
             <div id="dashIncome" class="text-lg font-bold text-emerald-600 mt-0.5">+0 Kč</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Klepni pro detail</div>
           </div>
-          <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-100">
-            <div class="text-xs text-slate-400 font-medium">Výdaje</div>
+          <div onclick="openFlowDetail('expense', 'month')" class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-100 cursor-pointer hover:border-rose-200 active:bg-rose-50/40 transition">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400 font-medium">Výdaje</span>
+              <span class="text-xs text-rose-400 font-bold">›</span>
+            </div>
             <div id="dashExpense" class="text-lg font-bold text-rose-600 mt-0.5">-0 Kč</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Klepni pro detail</div>
           </div>
         </div>
 
@@ -123,7 +131,72 @@
         </div>
       </section>
 
-      <!-- TAB 2: TRANSAKCE -->
+      <!-- TAB 2: CELKOVÝ PŘEHLED NAPŘÍČ VŠEMI MĚSÍCI -->
+      <section id="tab-overview" class="hidden space-y-4">
+        <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-4 rounded-3xl shadow-md space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Celková čistá bilance</div>
+              <div id="totNetBalance" class="text-2xl font-extrabold mt-0.5">0 Kč</div>
+            </div>
+            <span id="totPeriodBadge" class="text-[11px] bg-white/10 text-slate-200 px-2.5 py-1 rounded-full font-medium">0 měsíců</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5 pt-2 border-t border-white/10 text-xs">
+            <div onclick="openFlowDetail('income', 'all')" class="cursor-pointer hover:bg-white/5 p-1.5 -m-1.5 rounded-xl transition">
+              <span class="text-slate-400 flex items-center justify-between">
+                <span>Celkové příjmy</span>
+                <span class="text-emerald-400 font-bold">›</span>
+              </span>
+              <span id="totIncome" class="font-bold text-emerald-400 text-sm">+0 Kč</span>
+            </div>
+            <div onclick="openFlowDetail('expense', 'all')" class="cursor-pointer hover:bg-white/5 p-1.5 -m-1.5 rounded-xl transition">
+              <span class="text-slate-400 flex items-center justify-between">
+                <span>Celkové výdaje</span>
+                <span class="text-rose-400 font-bold">›</span>
+              </span>
+              <span id="totExpense" class="font-bold text-rose-400 text-sm">-0 Kč</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Měsíční průměry -->
+        <div class="grid grid-cols-3 gap-2">
+          <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
+            <div class="text-[10px] text-slate-400 font-medium">Prům. příjem/měs.</div>
+            <div id="avgMonthIncome" class="text-xs font-bold text-emerald-600 mt-1">0 Kč</div>
+          </div>
+          <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
+            <div class="text-[10px] text-slate-400 font-medium">Prům. výdaj/měs.</div>
+            <div id="avgMonthExpense" class="text-xs font-bold text-rose-600 mt-1">0 Kč</div>
+          </div>
+          <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
+            <div class="text-[10px] text-slate-400 font-medium">Prům. úspora/měs.</div>
+            <div id="avgMonthSavings" class="text-xs font-bold text-slate-800 mt-1">0 Kč</div>
+          </div>
+        </div>
+
+        <!-- Graf příjmů a výdajů po měsících -->
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-bold text-sm text-slate-700">Příjmy vs. výdaje po měsících</h2>
+            <span class="text-[10px] text-slate-400">Všechny záznamy</span>
+          </div>
+          <div class="h-48">
+            <canvas id="monthlyTrendChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Celkové výdaje po kategoriích za celou dobu -->
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="font-bold text-sm text-slate-700">Celkové výdaje podle kategorií</h2>
+            <span id="totTxCount" class="text-[11px] text-slate-400">0 plateb</span>
+          </div>
+          <div id="totalCategoryBreakdown" class="space-y-2.5"></div>
+        </div>
+      </section>
+
+      <!-- TAB 3: TRANSAKCE -->
       <section id="tab-transactions" class="hidden space-y-3">
         <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 space-y-2.5">
           <input id="searchInput" type="text" placeholder="Hledat obchodníka nebo poznámku..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-emerald-500" />
@@ -142,7 +215,7 @@
         <div id="transactionsList" class="space-y-3"></div>
       </section>
 
-      <!-- TAB 3: PŘIDAT / IMPORT -->
+      <!-- TAB 4: PŘIDAT / IMPORT -->
       <section id="tab-add" class="hidden space-y-4">
         <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
           <div class="flex items-center gap-2">
@@ -221,7 +294,7 @@
         </div>
       </section>
 
-      <!-- TAB 4: KATEGORIE & ÚČET -->
+      <!-- TAB 5: KATEGORIE & ÚČET -->
       <section id="tab-settings" class="hidden space-y-4">
         <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
           <div class="flex items-center justify-between">
@@ -242,10 +315,10 @@
         <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
           <div>
             <h2 class="font-bold text-sm text-slate-800">Automatické třídění plateb</h2>
-            <p class="text-xs text-slate-400">Když popis platby obsahuje slovo, přiřadí se kategorie</p>
+            <p class="text-xs text-slate-400">Když popis platby obsahuje slovo, přiřadí se kategorie (funguje pro výdaje i příjmy)</p>
           </div>
           <div class="flex gap-2">
-            <input id="ruleKeyword" type="text" placeholder="Např. regiojet, albert..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs" />
+            <input id="ruleKeyword" type="text" placeholder="Např. regiojet, kapesné..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs" />
             <select id="ruleCategory" class="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs"></select>
             <button id="addRuleBtn" class="bg-slate-900 text-white px-3 rounded-xl text-xs font-bold">+</button>
           </div>
@@ -275,37 +348,41 @@
       </section>
     </main>
 
-    <!-- Spodní navigace -->
+    <!-- Spodní navigace (5 záložek) -->
     <nav class="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-100 safe-bottom">
-      <div class="max-w-md mx-auto grid grid-cols-4 h-16">
+      <div class="max-w-md mx-auto grid grid-cols-5 h-16">
         <button data-tab="dashboard" class="nav-btn flex flex-col items-center justify-center text-emerald-600 font-bold">
-          <span class="text-lg">📊</span>
-          <span class="text-[10px] mt-0.5">Přehled</span>
+          <span class="text-base">📊</span>
+          <span class="text-[10px] mt-0.5">Měsíc</span>
+        </button>
+        <button data-tab="overview" class="nav-btn flex flex-col items-center justify-center text-slate-400">
+          <span class="text-base">📈</span>
+          <span class="text-[10px] mt-0.5">Celkem</span>
         </button>
         <button data-tab="transactions" class="nav-btn flex flex-col items-center justify-center text-slate-400">
-          <span class="text-lg">🧾</span>
+          <span class="text-base">🧾</span>
           <span class="text-[10px] mt-0.5">Pohyby</span>
         </button>
         <button data-tab="add" class="nav-btn flex flex-col items-center justify-center text-slate-400">
-          <span class="text-lg">➕</span>
-          <span class="text-[10px] mt-0.5">Import / +</span>
+          <span class="text-base">➕</span>
+          <span class="text-[10px] mt-0.5">Import</span>
         </button>
         <button data-tab="settings" class="nav-btn flex flex-col items-center justify-center text-slate-400">
-          <span class="text-lg">🎨</span>
+          <span class="text-base">🎨</span>
           <span class="text-[10px] mt-0.5">Kategorie</span>
         </button>
       </div>
     </nav>
   </div>
 
-  <!-- Modal pro detail plateb v kategorii -->
+  <!-- Modal pro detail plateb (kategorie, příjmy nebo výdaje) -->
   <div id="categoryDetailModal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-4">
     <div class="bg-white w-full max-w-md rounded-3xl p-5 space-y-3 shadow-xl max-h-[82vh] flex flex-col">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <div class="flex items-center gap-2.5">
           <span id="catDetailIcon" class="w-9 h-9 rounded-full flex items-center justify-center text-lg">🍔</span>
           <div>
-            <h3 id="catDetailTitle" class="font-bold text-base text-slate-800">Kategorie</h3>
+            <h3 id="catDetailTitle" class="font-bold text-base text-slate-800">Detail</h3>
             <p id="catDetailSubtitle" class="text-xs text-slate-400">Celkem: 0 Kč</p>
           </div>
         </div>
@@ -360,7 +437,7 @@
       setAuthStatus('Chyba: Prohlížeč zablokoval skript Supabase. Vypni Brave Shields pro tuto stránku.', 'error');
     } else {
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      setAuthStatus('Připraveno k přihlášení (verze 13).', 'ok');
+      setAuthStatus('Připraveno k přihlášení (verze 15).', 'ok');
     }
 
     if (window.pdfjsLib) {
@@ -507,9 +584,10 @@
     let pendingImports = [];
     let donutChartInstance = null;
     let barChartInstance = null;
+    let monthlyTrendChartInstance = null;
     let manualType = 'expense';
     let editingTxId = null;
-    let activeDetailCatId = null;
+    let activeDetailContext = null; // { mode: 'category' | 'flow', id: catId | 'income' | 'expense', scope: 'month' | 'all' }
 
     function setSyncStatus(text, isError = false) {
       const el = document.getElementById('syncStatus');
@@ -570,7 +648,6 @@
         localStorage.setItem('mf_transactions', JSON.stringify(state.transactions));
         setSyncStatus('☁️ Synchronizováno');
       } else {
-        // Nový účet v cloudu -> inicializuje se tvými výchozími kategoriemi a pravidly
         state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
         state.rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
         await saveState();
@@ -612,7 +689,6 @@
 
       setAuthStatus('⏳ Vytvářím účet...');
       try {
-        // Vyčistíme případná stará lokální data před registrací nového uživatele
         localStorage.removeItem('mf_transactions');
         localStorage.removeItem('mf_categories');
         localStorage.removeItem('mf_rules');
@@ -676,32 +752,44 @@
     }
 
     function autoCategorize(title, amount) {
-      if (amount > 0) return 'income';
       const lower = title.toLowerCase();
       for (const r of state.rules) {
         if (lower.includes(r.keyword.toLowerCase())) return r.categoryId;
       }
+      if (amount > 0) return 'income';
       return 'other';
     }
 
+    // --- NAVIGACE ---
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const target = btn.dataset.tab;
         document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
         document.getElementById(`tab-${target}`).classList.remove('hidden');
+
+        const monthWrap = document.getElementById('monthSelectorWrap');
+        if (target === 'overview') {
+          monthWrap.classList.add('opacity-40', 'pointer-events-none');
+        } else {
+          monthWrap.classList.remove('opacity-40', 'pointer-events-none');
+        }
+
         document.querySelectorAll('.nav-btn').forEach(b => {
           b.classList.remove('text-emerald-600', 'font-bold');
           b.classList.add('text-slate-400');
         });
         btn.classList.add('text-emerald-600', 'font-bold');
         btn.classList.remove('text-slate-400');
+
         if (target === 'dashboard') renderDashboard();
+        if (target === 'overview') renderTotalOverview();
         if (target === 'transactions') renderTransactions();
         if (target === 'settings') renderSettings();
       });
     });
 
     const MONTH_NAMES = ['Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'];
+    const SHORT_MONTHS = ['Led', 'Úno', 'Bře', 'Dub', 'Kvě', 'Čer', 'Čvc', 'Srp', 'Zář', 'Říj', 'Lis', 'Pro'];
 
     function updateMonthLabel() {
       const [y, m] = state.selectedMonth.split('-').map(Number);
@@ -724,41 +812,196 @@
       refreshAll();
     });
 
-    window.openCategoryDetail = function(catId) {
+    // --- VYKRESLENÍ SEZNAMU V MODALU ---
+    function renderDetailModalItems(txs) {
+      const listEl = document.getElementById('catDetailList');
+      if (!txs.length) {
+        listEl.innerHTML = `<p class="text-xs text-center text-slate-400 py-6">Žádné platby k zobrazení.</p>`;
+        return;
+      }
+      listEl.innerHTML = txs.map(t => {
+        const [y, m, d] = t.date.split('-');
+        const cat = getCategory(t.categoryId);
+        return `
+          <div onclick="openEditModal('${t.id}')" class="py-2.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 rounded-xl px-1.5">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs shrink-0" style="background-color: ${cat.color}20">${cat.icon}</span>
+              <div class="min-w-0">
+                <div class="text-sm font-semibold text-slate-800 truncate">${t.title}</div>
+                <div class="text-[11px] text-slate-400">${parseInt(d)}. ${parseInt(m)}. ${y} • <span style="color: ${cat.color}">${cat.name}</span> • ${t.account}</div>
+              </div>
+            </div>
+            <div class="text-sm font-bold shrink-0 ${t.amount >= 0 ? 'text-emerald-600' : 'text-slate-800'}">
+              ${t.amount >= 0 ? '+' : ''}${formatCurrency(t.amount)}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // --- DETAIL PŘÍJMŮ NEBO VÝDAJŮ (PO KLIKNUTÍ NA KARTU PŘÍJMY / VÝDAJE) ---
+    window.openFlowDetail = function(flowType, scope = 'month') {
+      const isIncome = flowType === 'income';
+      const txs = state.transactions
+        .filter(t => (scope === 'all' || t.date.startsWith(state.selectedMonth)) && (isIncome ? t.amount >= 0 : t.amount < 0))
+        .sort((a, b) => b.date.localeCompare(a.date));
+
+      activeDetailContext = { mode: 'flow', id: flowType, scope };
+      const total = txs.reduce((acc, t) => acc + Math.abs(t.amount), 0);
+
+      const iconEl = document.getElementById('catDetailIcon');
+      iconEl.textContent = isIncome ? '💰' : '💸';
+      iconEl.style.backgroundColor = isIncome ? '#22c55e20' : '#f43f5e20';
+      document.getElementById('catDetailTitle').textContent = isIncome ? 'Příjmy' : 'Výdaje';
+      document.getElementById('catDetailSubtitle').textContent = `${scope === 'all' ? 'Za celé období' : 'Tento měsíc'} • ${txs.length} plateb • ${isIncome ? '+' : '-'}${formatCurrency(total)}`;
+
+      renderDetailModalItems(txs);
+      document.getElementById('categoryDetailModal').classList.remove('hidden');
+    };
+
+    // --- DETAIL KATEGORIE ---
+    window.openCategoryDetail = function(catId, scope = 'month') {
       const cat = getCategory(catId);
       const txs = state.transactions
-        .filter(t => t.date.startsWith(state.selectedMonth) && t.categoryId === catId && t.amount < 0)
+        .filter(t => (scope === 'all' || t.date.startsWith(state.selectedMonth)) && t.categoryId === catId && t.amount < 0)
         .sort((a, b) => b.date.localeCompare(a.date));
       if (!txs.length) return;
-      activeDetailCatId = catId;
+
+      activeDetailContext = { mode: 'category', id: catId, scope };
       const total = txs.reduce((acc, t) => acc + Math.abs(t.amount), 0);
+
       const iconEl = document.getElementById('catDetailIcon');
       iconEl.textContent = cat.icon;
       iconEl.style.backgroundColor = `${cat.color}20`;
       document.getElementById('catDetailTitle').textContent = cat.name;
-      document.getElementById('catDetailSubtitle').textContent = `${txs.length} plateb • Celkem ${formatCurrency(total)}`;
+      document.getElementById('catDetailSubtitle').textContent = `${scope === 'all' ? 'Za celé období' : 'Tento měsíc'} • ${txs.length} plateb • ${formatCurrency(total)}`;
 
-      const listEl = document.getElementById('catDetailList');
-      listEl.innerHTML = txs.map(t => {
-        const [y, m, d] = t.date.split('-');
-        return `
-          <div onclick="openEditModal('${t.id}')" class="py-2.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 rounded-xl px-1.5">
-            <div class="min-w-0">
-              <div class="text-sm font-semibold text-slate-800 truncate">${t.title}</div>
-              <div class="text-[11px] text-slate-400">${parseInt(d)}. ${parseInt(m)}. ${y} • ${t.account}</div>
-            </div>
-            <div class="text-sm font-bold text-slate-800 shrink-0">${formatCurrency(t.amount)}</div>
-          </div>
-        `;
-      }).join('');
+      renderDetailModalItems(txs);
       document.getElementById('categoryDetailModal').classList.remove('hidden');
     };
 
     document.getElementById('closeCatDetailModal').addEventListener('click', () => {
-      activeDetailCatId = null;
+      activeDetailContext = null;
       document.getElementById('categoryDetailModal').classList.add('hidden');
     });
 
+    // --- CELKOVÝ PŘEHLED FINANCÍ (VŠECHNY MĚSÍCE) ---
+    function renderTotalOverview() {
+      const allTxs = state.transactions;
+      let totalIncome = 0;
+      let totalExpense = 0;
+      const catSums = {};
+      const monthMap = {};
+
+      allTxs.forEach(t => {
+        const ym = t.date.slice(0, 7);
+        if (!monthMap[ym]) monthMap[ym] = { income: 0, expense: 0 };
+
+        if (t.amount >= 0) {
+          totalIncome += t.amount;
+          monthMap[ym].income += t.amount;
+        } else {
+          const abs = Math.abs(t.amount);
+          totalExpense += abs;
+          monthMap[ym].expense += abs;
+          catSums[t.categoryId] = (catSums[t.categoryId] || 0) + abs;
+        }
+      });
+
+      const netBalance = totalIncome - totalExpense;
+      const monthsSorted = Object.keys(monthMap).sort();
+      const monthCount = Math.max(monthsSorted.length, 1);
+
+      document.getElementById('totIncome').textContent = '+' + formatCurrency(totalIncome);
+      document.getElementById('totExpense').textContent = '-' + formatCurrency(totalExpense);
+      const netEl = document.getElementById('totNetBalance');
+      netEl.textContent = `${netBalance >= 0 ? '+' : ''}${formatCurrency(netBalance)}`;
+      netEl.className = `text-2xl font-extrabold mt-0.5 ${netBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+      document.getElementById('totPeriodBadge').textContent = `${monthsSorted.length} ${monthsSorted.length === 1 ? 'měsíc' : (monthsSorted.length < 5 ? 'měsíce' : 'měsíců')}`;
+      document.getElementById('totTxCount').textContent = `${allTxs.length} záznamů celkem`;
+
+      document.getElementById('avgMonthIncome').textContent = '+' + formatCurrency(totalIncome / monthCount);
+      document.getElementById('avgMonthExpense').textContent = '-' + formatCurrency(totalExpense / monthCount);
+      const avgSave = netBalance / monthCount;
+      const avgSaveEl = document.getElementById('avgMonthSavings');
+      avgSaveEl.textContent = `${avgSave >= 0 ? '+' : ''}${formatCurrency(avgSave)}`;
+      avgSaveEl.className = `text-xs font-bold mt-1 ${avgSave >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
+
+      const trendCtx = document.getElementById('monthlyTrendChart').getContext('2d');
+      if (monthlyTrendChartInstance) monthlyTrendChartInstance.destroy();
+
+      const labels = monthsSorted.map(ym => {
+        const [y, m] = ym.split('-').map(Number);
+        return `${SHORT_MONTHS[m - 1]} ${String(y).slice(2)}`;
+      });
+
+      monthlyTrendChartInstance = new Chart(trendCtx, {
+        type: 'bar',
+        data: {
+          labels: labels.length ? labels : ['Žádná data'],
+          datasets: [
+            {
+              label: 'Příjmy',
+              data: monthsSorted.map(ym => Math.round(monthMap[ym].income)),
+              backgroundColor: '#10b981',
+              borderRadius: 4
+            },
+            {
+              label: 'Výdaje',
+              data: monthsSorted.map(ym => Math.round(monthMap[ym].expense)),
+              backgroundColor: '#f43f5e',
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+            y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 9 } } }
+          }
+        }
+      });
+
+      const sortedCats = Object.entries(catSums)
+        .map(([catId, sum]) => ({ cat: getCategory(catId), sum }))
+        .sort((a, b) => b.sum - a.sum);
+
+      const totBreakdownEl = document.getElementById('totalCategoryBreakdown');
+      if (!sortedCats.length) {
+        totBreakdownEl.innerHTML = `<p class="text-xs text-center text-slate-400 py-2">Zatím nejsou nahrané žádné výdaje.</p>`;
+      } else {
+        totBreakdownEl.innerHTML = sortedCats.map(item => {
+          const pct = totalExpense > 0 ? Math.round((item.sum / totalExpense) * 100) : 0;
+          return `
+            <div onclick="openCategoryDetail('${item.cat.id}', 'all')" class="flex items-center justify-between text-xs p-1.5 -mx-1.5 rounded-2xl cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm" style="background-color: ${item.cat.color}20">${item.cat.icon}</span>
+                <div>
+                  <div class="font-semibold text-slate-700">${item.cat.name}</div>
+                  <div class="w-28 h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                    <div class="h-full rounded-full" style="width: ${pct}%; background-color: ${item.cat.color}"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="text-right">
+                  <div class="font-bold text-slate-800">${formatCurrency(item.sum)}</div>
+                  <div class="text-[11px] text-slate-400">${pct} %</div>
+                </div>
+                <span class="text-slate-300 font-bold text-sm">›</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // --- MĚSÍČNÍ DASHBOARD & GRAFY ---
     function renderDashboard() {
       updateMonthLabel();
       const monthTxs = state.transactions.filter(t => t.date.startsWith(state.selectedMonth));
@@ -804,7 +1047,7 @@
           responsive: true,
           maintainAspectRatio: false,
           onClick: (event, elements) => {
-            if (elements.length > 0 && sortedCats.length > 0) openCategoryDetail(sortedCats[elements[0].index].cat.id);
+            if (elements.length > 0 && sortedCats.length > 0) openCategoryDetail(sortedCats[elements[0].index].cat.id, 'month');
           },
           plugins: { legend: { display: false } }
         }
@@ -817,7 +1060,7 @@
         breakdownEl.innerHTML = sortedCats.map(item => {
           const pct = expense > 0 ? Math.round((item.sum / expense) * 100) : 0;
           return `
-            <div onclick="openCategoryDetail('${item.cat.id}')" class="flex items-center justify-between text-xs p-1.5 -mx-1.5 rounded-2xl cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition">
+            <div onclick="openCategoryDetail('${item.cat.id}', 'month')" class="flex items-center justify-between text-xs p-1.5 -mx-1.5 rounded-2xl cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition">
               <div class="flex items-center gap-2.5">
                 <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm" style="background-color: ${item.cat.color}20">${item.cat.icon}</span>
                 <div>
@@ -991,7 +1234,6 @@
       const lines = text.split(/\r?\n/).filter(l => l.trim());
       const results = [];
 
-      // Formát 1: mBank "Seznam operací" (#Datum operace;#Popis operace;#Účet;#Kategorie;#Částka;)
       const opsHeaderIdx = lines.findIndex(l => l.includes('#Datum operace') && l.includes('#Popis operace'));
       if (opsHeaderIdx !== -1) {
         for (let i = opsHeaderIdx + 1; i < lines.length; i++) {
@@ -1006,7 +1248,6 @@
         return results;
       }
 
-      // Formát 2: mBank "Výpis z účtu" (#Datum zaúčtování transakce;...;#Částka transakce;)
       const stmtHeaderIdx = lines.findIndex(l => l.includes('#Datum') && l.includes('#Částka'));
       if (stmtHeaderIdx !== -1) {
         for (let i = stmtHeaderIdx + 1; i < lines.length; i++) {
@@ -1026,7 +1267,6 @@
         return results;
       }
 
-      // Formát 3: Obecný CSV parser (ČSOB a ostatní)
       lines.forEach(line => {
         const sep = line.includes(';') ? ';' : ',';
         const parts = line.split(sep).map(p => p.trim().replace(/^"|"$/g, '').trim());
@@ -1169,6 +1409,17 @@
       document.getElementById('editTxModal').classList.remove('hidden');
     };
 
+    function refreshOpenDetailModal() {
+      if (!activeDetailContext) return;
+      if (activeDetailContext.mode === 'category') {
+        const remaining = state.transactions.filter(t => (activeDetailContext.scope === 'all' || t.date.startsWith(state.selectedMonth)) && t.categoryId === activeDetailContext.id && t.amount < 0);
+        if (remaining.length) openCategoryDetail(activeDetailContext.id, activeDetailContext.scope);
+        else { activeDetailContext = null; document.getElementById('categoryDetailModal').classList.add('hidden'); }
+      } else if (activeDetailContext.mode === 'flow') {
+        openFlowDetail(activeDetailContext.id, activeDetailContext.scope);
+      }
+    }
+
     window.assignCategoryToTx = async function(catId) {
       const tx = state.transactions.find(t => t.id === editingTxId);
       if (!tx) return;
@@ -1183,11 +1434,7 @@
       await saveState();
       document.getElementById('editTxModal').classList.add('hidden');
       refreshAll();
-      if (activeDetailCatId) {
-        const remaining = state.transactions.filter(t => t.date.startsWith(state.selectedMonth) && t.categoryId === activeDetailCatId && t.amount < 0);
-        if (remaining.length) openCategoryDetail(activeDetailCatId);
-        else { activeDetailCatId = null; document.getElementById('categoryDetailModal').classList.add('hidden'); }
-      }
+      refreshOpenDetailModal();
     };
 
     document.getElementById('closeEditModal').addEventListener('click', () => document.getElementById('editTxModal').classList.add('hidden'));
@@ -1196,7 +1443,7 @@
       await saveState();
       document.getElementById('editTxModal').classList.add('hidden');
       refreshAll();
-      if (activeDetailCatId) openCategoryDetail(activeDetailCatId);
+      refreshOpenDetailModal();
     });
 
     function renderSettings() {
@@ -1269,7 +1516,13 @@
       document.getElementById('categoryFilter').innerHTML = `<option value="all">Všechny kategorie</option>` + optionsHtml;
     }
 
-    function refreshAll() { populateCategorySelects(); renderDashboard(); renderTransactions(); renderSettings(); }
+    function refreshAll() {
+      populateCategorySelects();
+      renderDashboard();
+      renderTotalOverview();
+      renderTransactions();
+      renderSettings();
+    }
     refreshAll();
   </script>
 </body>
