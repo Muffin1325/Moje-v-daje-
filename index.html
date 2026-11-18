@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Moje Finance</title>
+    
+    <!-- PWA & Mobilní nastavení pro přidání na plochu -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Moje Finance">
+    <meta name="theme-color" content="#10B981">
+    <link rel="manifest" id="pwa-manifest">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js pro grafy -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #f1f5f9;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+        }
+
+        /* Skrytí scrollbarů pro čistý mobilní vzhled */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Animace přepínání záložek */
+        .tab-content {
+            animation: fadeIn 0.2s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Vlastní styl pro color input */
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            padding: 0;
+            overflow: hidden;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="flex justify-center min-h-screen bg-slate-100 text-slate-800">
+
+    <!-- Hlavní mobilní kontejner -->
+    <div class="w-full max-w-[480px] bg-slate-50 min-h-screen shadow-2xl relative flex flex-col pb-24">
+        
+        <!-- Horní hlavička -->
+        <header class="bg-white px-5 pt-6 pb-4 sticky top-0 z-20 border-b border-slate-100 flex items-center justify-between">
+            <div>
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Osobní finance</p>
+                <h1 id="header-title" class="text-xl font-extrabold text-slate-900 tracking-tight">Přehled</h1>
+            </div>
+            
+            <!-- Výběr měsíce -->
+            <div class="flex items-center bg-slate-100 rounded-full p-1">
+                <button onclick="changeMonth(-1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white text-slate-600 transition active:scale-95" aria-label="Předchozí měsíc">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <span id="current-month-label" class="text-xs font-bold px-2.5 text-slate-700 min-w-[95px] text-center">Listopad 2026</span>
+                <button onclick="changeMonth(1)" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white text-slate-600 transition active:scale-95" aria-label="Další měsíc">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Notifikační toast zpráva (místo alert) -->
+        <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-sm font-medium px-4 py-2.5 rounded-full shadow-lg opacity-0 pointer-events-none transition-all duration-300 flex items-center gap-2 max-w-[90%]">
+            <span id="toast-icon">✅</span>
+            <span id="toast-text">Uloženo</span>
+        </div>
+
+        <!-- HLAVNÍ OBSAH JEDNOTLIVÝCH ZÁLOŽEK -->
+        <main class="flex-1 px-4 pt-4 space-y-4">
+
+            <!-- 1. ZÁLOŽKA: PŘEHLED (DASHBOARD) -->
+            <section id="view-dashboard" class="tab-content space-y-4">
+                
+                <!-- Přehledové karty Příjmy / Výdaje / Bilance -->
+                <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Měsíční bilance</span>
+                        <span id="balance-badge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600">+0 Kč</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-emerald-50/70 rounded-2xl p-3.5 border border-emerald-100/50">
+                            <div class="flex items-center gap-1.5 text-emerald-600 mb-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 11l5-5m0 0l5 5m-5-5v12"/></svg>
+                                <span class="text-xs font-semibold">Příjmy</span>
+                            </div>
+                            <p id="dash-income" class="text-lg font-extrabold text-slate-900">0 Kč</p>
+                        </div>
+
+                        <div class="bg-rose-50/70 rounded-2xl p-3.5 border border-rose-100/50">
+                            <div class="flex items-center gap-1.5 text-rose-600 mb-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 13l-5 5m0 0l-5-5m5 5V6"/></svg>
+                                <span class="text-xs font-semibold">Výdaje</span>
+                            </div>
+                            <p id="dash-expense" class="text-lg font-extrabold text-slate-900">0 Kč</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kruhový graf výdajů podle kategorií (Spendee styl) -->
+                <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="text-base font-bold text-slate-800">Výdaje podle kategorií</h2>
+                        <span id="dash-tx-count" class="text-xs font-medium text-slate-400">0 plateb</span>
+                    </div>
+
+                    <div id="donut-wrapper" class="relative h-60 w-full flex items-center justify-center my-2">
+                        <canvas id="categoryDonutChart"></canvas>
+                        <!-- Středový text v kruhovém grafu -->
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span class="text-[11px] font-semibold text-slate-400 uppercase">Celkem výdaje</span>
+                            <span id="donut-center-total" class="text-xl font-extrabold text-slate-900 mt-0.5">0 Kč</span>
+                        </div>
+                    </div>
+
+                    <!-- Seznam kategorií s procenty pod grafem -->
+                    <div id="category-breakdown-list" class="mt-4 space-y-2.5 divide-y divide-slate-50">
+                        <!-- Dynamicky generováno JS -->
+                    </div>
+                </div>
+
+                <!-- Graf průběhu financí v měsíci -->
+                <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-800">Průběh financí</h2>
+                            <p class="text-xs text-slate-400">Denní přehled výdajů a příjmů</p>
+                        </div>
+                    </div>
+                    <div class="h-48 w-full">
+                        <canvas id="cashflowTrendChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Rychlá výzva pokud nejsou žádná data -->
+                <div id="empty-dashboard-cta" class="hidden bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-5 text-white shadow-md">
+                    <h3 class="font-bold text-base mb-1">Zatím tu nemáš žádné pohyby</h3>
+                    <p class="text-xs text-emerald-50 mb-4 leading-relaxed">Nahraj CSV výpis z mBank nebo ČSOB, nebo si jedním kliknutím načti ukázková data pro vyzkoušení.</p>
+                    <div class="flex gap-2">
+                        <button onclick="switchTab('add')" class="bg-white text-emerald-700 font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm active:scale-95 transition">
+                            Nahrát výpis / Přidat
+                        </button>
+                        <button onclick="loadDemoData()" class="bg-emerald-700/50 text-white font-semibold text-xs px-4 py-2.5 rounded-xl border border-white/20 active:scale-95 transition">
+                            Načíst demo data
+                        </button>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- 2. ZÁLOŽKA: TRANSAKCE -->
+            <section id="view-transactions" class="tab-content hidden space-y-3">
+                
+                <!-- Vyhledávání a filtry -->
+                <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 space-y-3">
+                    <div class="relative">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <input type="text" id="search-input" oninput="renderTransactions()" placeholder="Hledat obchodníka, poznámku..." class="w-full bg-slate-100 text-sm rounded-2xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                    </div>
+
+                    <div class="flex gap-2 overflow-x-auto no-scrollbar pb-0.5">
+                        <select id="filter-category" onchange="renderTransactions()" class="bg-slate-100 text-xs font-semibold text-slate-700 rounded-xl px-3 py-2 focus:outline-none">
+                            <option value="all">Všechny kategorie</option>
+                        </select>
+                        <select id="filter-bank" onchange="renderTransactions()" class="bg-slate-100 text-xs font-semibold text-slate-700 rounded-xl px-3 py-2 focus:outline-none">
+                            <option value="all">Všechny účty</option>
+                            <option value="mBank">mBank</option>
+                            <option value="ČSOB">ČSOB</option>
+                            <option value="Hotovost">Hotovost / Ručně</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Seznam transakcí -->
+                <div id="transactions-list" class="space-y-4 pb-4">
+                    <!-- Dynamicky generováno JS -->
+                </div>
+
+            </section>
+
+            <!-- 3. ZÁLOŽKA: PŘIDAT / IMPORT CSV -->
+            <section id="view-add" class="tab-content hidden space-y-4">
+                
+                <!-- Karta 1: Chytrý import CSV z mBank a ČSOB -->
+                <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+                    <div class="flex items-center gap-2.5 mb-2">
+                        <div class="w-9 h-9 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">Import z banky (CSV)</h2>
+                            <p class="text-xs text-slate-400">Podpora pro <strong>mBank</strong> a <strong>ČSOB</strong></p>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-slate-500 mb-3 leading-relaxed">
+                        V internetovém bankovnictví mBank nebo ČSOB stáhni historii pohybů ve formátu <strong>CSV</strong> a nahraj ji sem. Platby se samy roztřídí podle tvých pravidel.
+                    </p>
+
+                    <div class="mb-3">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Z jaké banky soubor nahráváš?</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" onclick="selectImportBank('auto')" id="bank-btn-auto" class="import-bank-btn bg-emerald-500 text-white font-bold text-xs py-2 rounded-xl transition">Auto-detekce</button>
+                            <button type="button" onclick="selectImportBank('mBank')" id="bank-btn-mBank" class="import-bank-btn bg-slate-100 text-slate-600 font-semibold text-xs py-2 rounded-xl transition">mBank</button>
+                            <button type="button" onclick="selectImportBank('ČSOB')" id="bank-btn-ČSOB" class="import-bank-btn bg-slate-100 text-slate-600 font-semibold text-xs py-2 rounded-xl transition">ČSOB</button>
+                        </div>
+                    </div>
+
+                    <label class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-emerald-300 rounded-2xl cursor-pointer bg-emerald-50/40 hover:bg-emerald-50 transition active:scale-[0.99]">
+                        <div class="flex flex-col items-center justify-center pt-3 pb-3 text-center px-4">
+                            <span class="text-2xl mb-1">📄</span>
+                            <p class="text-xs font-bold text-emerald-700">Vybrat CSV výpis z mobilu / PC</p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Automaticky odstraní duplicitní platby</p>
+                        </div>
+                        <input id="csv-file-input" type="file" accept=".csv,.txt" class="hidden" onchange="handleCSVUpload(event)">
+                    </label>
+                </div>
+
+                <!-- Karta 2: Ruční přidání transakce -->
+                <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+                    <h2 class="text-base font-bold text-slate-900 mb-3">Rychlé ruční zadání</h2>
+                    
+                    <form id="manual-tx-form" onsubmit="addManualTransaction(event)" class="space-y-3.5">
+                        <!-- Přepínač Výdaj / Příjem -->
+                        <div class="grid grid-cols-2 bg-slate-100 p-1 rounded-2xl">
+                            <button type="button" id="type-expense-btn" onclick="setTxType('expense')" class="py-2 text-xs font-bold rounded-xl bg-white text-rose-600 shadow-sm transition">Výdaj (-)</button>
+                            <button type="button" id="type-income-btn" onclick="setTxType('income')" class="py-2 text-xs font-bold rounded-xl text-slate-500 transition">Příjem (+)</button>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Částka (Kč)</label>
+                            <input type="number" id="tx-amount" step="0.01" min="0.01" required placeholder="např. 245" class="w-full bg-slate-100 text-lg font-extrabold text-slate-900 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Název / Obchodník</label>
+                            <input type="text" id="tx-title" required placeholder="např. Oběd menza, Albert, Kafe..." class="w-full bg-slate-100 text-sm font-medium text-slate-900 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Kategorie</label>
+                                <select id="tx-category" class="w-full bg-slate-100 text-sm font-semibold text-slate-800 rounded-2xl px-3 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                    <!-- Generováno JS -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">Účet</label>
+                                <select id="tx-bank" class="w-full bg-slate-100 text-sm font-semibold text-slate-800 rounded-2xl px-3 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                    <option value="mBank">mBank</option>
+                                    <option value="ČSOB">ČSOB</option>
+                                    <option value="Hotovost">Hotovost</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Datum</label>
+                            <input type="date" id="tx-date" required class="w-full bg-slate-100 text-sm font-medium text-slate-800 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+
+                        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm py-3.5 rounded-2xl shadow-md shadow-emerald-500/20 transition active:scale-[0.98]">
+                            Uložit pohyb
+                        </button>
+                    </form>
+                </div>
+
+            </section>
+
+            <!-- 4. ZÁLOŽKA: KATEGORIE & PRAVIDLA -->
+            <section id="view-settings" class="tab-content hidden space-y-4">
+                
+                <!-- Správa kategorií -->
+                <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">Moje kategorie</h2>
+                            <p class="text-xs text-slate-400">Uprav si názvy, barvy a ikonky</p>
+                        </div>
+                        <button onclick="openCategoryModal()" class="bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm active:scale-95 transition">
+                            + Nová
+                        </button>
+                    </div>
+
+                    <div id="categories-manage-list" class="space-y-2">
+                        <!-- Dynamicky generováno JS -->
+                    </div>
+                </div>
+
+                <!-- Chytrá pravidla pro automatické třídění CSV -->
+                <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+                    <div class="mb-3">
+                        <h2 class="text-base font-bold text-slate-900">Chytrá pravidla třídění</h2>
+                        <p class="text-xs text-slate-400">Když platba z banky obsahuje slovo, přiřadí se kategorie</p>
+                    </div>
+
+                    <form onsubmit="addRule(event)" class="flex gap-2 mb-4">
+                        <input type="text" id="rule-keyword" required placeholder="Klíčové slovo (např. Albert)" class="flex-1 bg-slate-100 text-xs font-medium rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <select id="rule-category" class="bg-slate-100 text-xs font-semibold rounded-xl px-2.5 py-2.5 max-w-[130px] focus:outline-none">
+                            <!-- Generováno JS -->
+                        </select>
+                        <button type="submit" class="bg-slate-900 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition">
+                            +
+                        </button>
+                    </form>
+
+                    <div id="rules-list" class="space-y-2 mb-3">
+                        <!-- Dynamicky generováno JS -->
+                    </div>
+
+                    <button onclick="reapplyAllRules()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2.5 rounded-xl transition">
+                        🔄 Přetřídit stávající platby podle pravidel
+                    </button>
+                </div>
+
+                <!-- Záloha a přenos dat -->
+                <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 space-y-3">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900">Záloha a demo data</h2>
+                        <p class="text-xs text-slate-400">Data jsou uložena v paměti tohoto prohlížeče</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <button onclick="exportBackupJSON()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-3 rounded-xl transition flex items-center justify-center gap-1.5">
+                            <span>⬇️</span> Export zálohy
+                        </button>
+                        <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-3 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer">
+                            <span>⬆️</span> Import zálohy
+                            <input type="file" accept=".json" class="hidden" onchange="importBackupJSON(event)">
+                        </label>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-100 flex justify-between items-center">
+                        <button onclick="loadDemoData()" class="text-xs font-semibold text-emerald-600 hover:underline">
+                            Načíst ukázková data
+                        </button>
+                        <button onclick="confirmClearAllData()" class="text-xs font-semibold text-rose-500 hover:underline">
+                            Smazat všechna data
+                        </button>
+                    </div>
+                </div>
+
+            </section>
+
+        </main>
+
+        <!-- SPODNÍ NAVIGAČNÍ LIŠTA (BOTTOM TAB BAR) -->
+        <nav class="fixed bottom-0 w-full max-w-[480px] bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-2 py-2 flex justify-around items-center z-30">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn flex flex-col items-center justify-center w-16 py-1 text-emerald-600 transition">
+                <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
+                <span class="text-[10px] font-bold">Přehled</span>
+            </button>
+
+            <button onclick="switchTab('transactions')" id="nav-transactions" class="nav-btn flex flex-col items-center justify-center w-16 py-1 text-slate-400 hover:text-slate-600 transition">
+                <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                <span class="text-[10px] font-semibold">Pohyby</span>
+            </button>
+
+            <!-- Výrazné středové tlačítko + -->
+            <button onclick="switchTab('add')" id="nav-add" class="nav-btn flex flex-col items-center justify-center -mt-5">
+                <div class="w-14 h-14 rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/40 flex items-center justify-center transform transition active:scale-90">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                </div>
+                <span class="text-[10px] font-bold text-slate-500 mt-1">Přidat</span>
+            </button>
+
+            <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn flex flex-col items-center justify-center w-16 py-1 text-slate-400 hover:text-slate-600 transition">
+                <svg class="w-6 h-6 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                <span class="text-[10px] font-semibold">Kategorie</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <!-- MODÁLNÍ OKNO: ÚPRAVA / PŘIDÁNÍ KATEGORIE -->
+    <div id="category-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-end sm:items-center justify-center p-4">
+        <div class="bg-white w-full max-w-[440px] rounded-3xl p-6 shadow-2xl space-y-4 animate-fadeIn">
+            <div class="flex justify-between items-center">
+                <h3 id="cat-modal-title" class="text-lg font-extrabold text-slate-900">Nová kategorie</h3>
+                <button onclick="closeCategoryModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold">✕</button>
+            </div>
+
+            <form onsubmit="saveCategory(event)" class="space-y-4">
+                <input type="hidden" id="edit-cat-id">
+                
+                <div class="flex gap-3 items-center">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Ikona</label>
+                        <input type="text" id="edit-cat-icon" value="🏷️" maxlength="4" required class="w-14 h-12 text-center text-2xl bg-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">Název kategorie</label>
+                        <input type="text" id="edit-cat-name" required placeholder="např. Kavárny, Sport..." class="w-full h-12 bg-slate-100 text-sm font-bold rounded-2xl px-4 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+
+                <!-- Rychlý výběr emoji -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1.5">Rychlá volba ikony</label>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="setCatEmoji('🍔')" class="w-9 h-9 bg-slate-100 rounded-xl text-lg hover:bg-slate-200">🍔</button>
+                        <button type="button" onclick="setCatEmoji('☕')" class="w-9 h-9 bg-slate-100 rounded-xl text-lg hover:bg-slate-200">☕</button>
+                        <button type="button" onclick="setCatEmoji('🏠')" class="w-9 h-9 bg-slate-100 rounded-xl text-lg hover:bg-slate-200">🏠</button>
+                        <button type="button" onclick="setCatEmoji('🚗')" class="w-9 h-9 bg-slate-100 rounded-xl text-lg hover:bg-slate-200">🚗</button>
+                        <button type="button" onclick="setCatEmoji('🎬')" class="w-9 h-9 bg-slate-100 rounded-xl text-lg hover:bg-slate-200">🎬</button>
+                        <button type="button" onclick="setCatEmoji('🎓')" class="w-9 h-9 bg-slate-100 rounded-xl text-lg hover:bg-slate-200">🎓</button>
+                        <button type="button" onclick="setCatEmoji('🏋️')" class="w-9 h-9 bg-slate-100 rounded-xl text-lg hover:bg-slate-200">🏋️</button>
+                        <button type="button" onclick="setCatEmoji('💊')" class="w-9 h-9 bg-slate-100 rounded-xl text-lg hover:bg-slate-200">💊</button>
+                        <button type="button" onclick="setCatEmoji('✈️')" class="w-9 h-9 bg-slate-100 rounded-xl text-lg hover:bg-slate-200">✈️</button>
+                        <button type="button" onclick="setCatEmoji('🎁')" class="w-9 h-9 bg-slate-100 rounded-xl text-lg hover:bg-slate-200">🎁</button>
+                    </div>
+                </div>
+
+                <!-- Výběr barvy -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1.5">Barva kategorie</label>
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <input type="color" id="edit-cat-color" value="#10B981">
+                        <button type="button" onclick="setCatColor('#10B981')" class="w-7 h-7 rounded-full bg-[#10B981]"></button>
+                        <button type="button" onclick="setCatColor('#F59E0B')" class="w-7 h-7 rounded-full bg-[#F59E0B]"></button>
+                        <button type="button" onclick="setCatColor('#8B5CF6')" class="w-7 h-7 rounded-full bg-[#8B5CF6]"></button>
+                        <button type="button" onclick="setCatColor('#3B82F6')" class="w-7 h-7 rounded-full bg-[#3B82F6]"></button>
+                        <button type="button" onclick="setCatColor('#EC4899')" class="w-7 h-7 rounded-full bg-[#EC4899]"></button>
+                        <button type="button" onclick="setCatColor('#EF4444')" class="w-7 h-7 rounded-full bg-[#EF4444]"></button>
+                        <button type="button" onclick="setCatColor('#06B6D4')" class="w-7 h-7 rounded-full bg-[#06B6D4]"></button>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-500 text-white font-bold text-sm py-3.5 rounded-2xl shadow-md">
+                    Uložit kategorii
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODÁLNÍ OKNO: DETAIL A ÚPRAVA TRANSAKCE -->
+    <div id="tx-edit-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-end sm:items-center justify-center p-4">
+        <div class="bg-white w-full max-w-[440px] rounded-3xl p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-extrabold text-slate-900">Detail platby</h3>
+                <button onclick="closeTxEditModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold">✕</button>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-2xl">
+                <p id="detail-tx-title" class="font-bold text-slate-900 text-base">Název</p>
+                <div class="flex justify-between items-center mt-1">
+                    <span id="detail-tx-date" class="text-xs text-slate-400">Datum • Banka</span>
+                    <span id="detail-tx-amount" class="font-extrabold text-base">0 Kč</span>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Změnit kategorii platby:</label>
+                <div id="detail-category-grid" class="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto">
+                    <!-- Generováno JS -->
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-100 flex justify-between gap-3">
+                <button onclick="deleteCurrentTx()" class="flex-1 bg-rose-50 text-rose-600 font-bold text-xs py-3 rounded-xl hover:bg-rose-100 transition">
+                    🗑️ Smazat platbu
+                </button>
+                <button onclick="closeTxEditModal()" class="flex-1 bg-slate-900 text-white font-bold text-xs py-3 rounded-xl">
+                    Hotovo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODÁLNÍ OKNO: POTVRZENÍ SMAZÁNÍ DAT (místo confirm()) -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-[360px] rounded-3xl p-6 shadow-2xl space-y-4 text-center">
+            <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto text-xl">⚠️</div>
+            <h3 class="text-lg font-extrabold text-slate-900">Smazat všechna data?</h3>
+            <p class="text-xs text-slate-500 leading-relaxed">Tímto smažeš všechny nahrané transakce a vrátíš kategorie do původního stavu. Doporučujeme si nejdřív udělat export zálohy.</p>
+            <div class="flex gap-2.5 pt-2">
+                <button onclick="closeConfirmModal()" class="flex-1 bg-slate-100 text-slate-700 font-bold text-xs py-3 rounded-xl">Zrušit</button>
+                <button onclick="executeClearAllData()" class="flex-1 bg-rose-500 text-white font-bold text-xs py-3 rounded-xl">Ano, smazat</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. INICIALIZACE PWA MANIFESTU
+        // ==========================================
+        const manifestData = {
+            name: "Moje Finance",
+            short_name: "Finance",
+            start_url: ".",
+            display: "standalone",
+            background_color: "#f8fafc",
+            theme_color: "#10B981",
+            icons: [{
+                src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%2310B981'/><text y='.9em' font-size='70' x='14'>💰</text></svg>",
+                sizes: "192x192",
+                type: "image/svg+xml"
+            }]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
+        document.getElementById('pwa-manifest').setAttribute('href', URL.createObjectURL(manifestBlob));
+
+        // ==========================================
+        // 2. VÝCHOZÍ DATA A STAV APLIKACE
+        // ==========================================
+        const DEFAULT_CATEGORIES = [
+            { id: 'cat_food', name: 'Jídlo & Nákupy', color: '#10B981', icon: '🛒' },
+            { id: 'cat_bills', name: 'Pravidelné výdaje', color: '#F59E0B', icon: '🔄' },
+            { id: 'cat_fun', name: 'Zábava & Volný čas', color: '#8B5CF6', icon: '🎉' },
+            { id: 'cat_school', name: 'Škola & Studium', color: '#3B82F6', icon: '🎓' },
+            { id: 'cat_transport', name: 'Doprava', color: '#06B6D4', icon: '🚆' },
+            { id: 'cat_clothes', name: 'Oblečení & Péče', color: '#EC4899', icon: '👕' },
+            { id: 'cat_income', name: 'Příjmy', color: '#22C55E', icon: '💰' },
+            { id: 'cat_other', name: 'Ostatní', color: '#64748B', icon: '📦' }
+        ];
+
+        const DEFAULT_RULES = [
+            { id: 'r1', keyword: 'albert', categoryId: 'cat_food' },
+            { id: 'r2', keyword: 'lidl', categoryId: 'cat_food' },
+            { id: 'r3', keyword: 'kaufland', categoryId: 'cat_food' },
+            { id: 'r4', keyword: 'rohlík', categoryId: 'cat_food' },
+            { id: 'r5', keyword: 'tesco', categoryId: 'cat_food' },
+            { id: 'r6', keyword: 'billa', categoryId: 'cat_food' },
+            { id: 'r7', keyword: 'menza', categoryId: 'cat_school' },
+            { id: 'r8', keyword: 'univerzita', categoryId: 'cat_school' },
+            { id: 'r9', keyword: 'škola', categoryId: 'cat_school' },
+            { id: 'r10', keyword: 'české dráhy', categoryId: 'cat_transport' },
+            { id: 'r11', keyword: 'regiojet', categoryId: 'cat_transport' },
+            { id: 'r12', keyword: 'ids jmk', categoryId: 'cat_transport' },
+            { id: 'r13', keyword: 'pid', categoryId: 'cat_transport' },
+            { id: 'r14', keyword: 'bolt', categoryId: 'cat_transport' },
+            { id: 'r15', keyword: 'spotify', categoryId: 'cat_bills' },
+            { id: 'r16', keyword: 'netflix', categoryId: 'cat_bills' },
+            { id: 'r17', keyword: 'nájem', categoryId: 'cat_bills' },
+            { id: 'r18', keyword: 'o2', categoryId: 'cat_bills' },
+            { id: 'r19', keyword: 't-mobile', categoryId: 'cat_bills' },
+            { id: 'r20', keyword: 'vodafone', categoryId: 'cat_bills' },
+            { id: 'r21', keyword: 'cinema', categoryId: 'cat_fun' },
+            { id: 'r22', keyword: 'kino', categoryId: 'cat_fun' },
+            { id: 'r23', keyword: 'wolt', categoryId: 'cat_food' },
+            { id: 'r24', keyword: 'foodora', categoryId: 'cat_food' }
+        ];
+
+        let state = {
+            transactions: [],
+            categories: [],
+            rules: [],
+            currentYear: new Date().getFullYear(),
+            currentMonth: new Date().getMonth(), // 0-11
+            selectedImportBank: 'auto',
+            manualTxType: 'expense',
+            editingTxId: null
+        };
+
+        let donutChartInstance = null;
+        let trendChartInstance = null;
+
+        // ==========================================
+        // 3. NAČTENÍ A ULOŽENÍ DO LOCALSTORAGE
+        // ==========================================
+        function loadState() {
+            try {
+                const savedTx = localStorage.getItem('mf_transactions');
+                const savedCats = localStorage.getItem('mf_categories');
+                const savedRules = localStorage.getItem('mf_rules');
+
+                state.transactions = savedTx ? JSON.parse(savedTx) : [];
+                state.categories = savedCats ? JSON.parse(savedCats) : [...DEFAULT_CATEGORIES];
+                state.rules = savedRules ? JSON.parse(savedRules) : [...DEFAULT_RULES];
+
+                // Pokud je aplikace spuštěna úplně poprvé, nastavíme aktuální měsíc podle dat nebo dneška
+                if (state.transactions.length > 0) {
+                    const latest = state.transactions.reduce((a, b) => a.date > b.date ? a : b);
+                    const d = new Date(latest.date);
+                    if (!isNaN(d)) {
+                        state.currentYear = d.getFullYear();
+                        state.currentMonth = d.getMonth();
+                    }
+                }
+            } catch (e) {
+                console.error("Chyba načítání dat:", e);
+                state.categories = [...DEFAULT_CATEGORIES];
+                state.rules = [...DEFAULT_RULES];
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem('mf_transactions', JSON.stringify(state.transactions));
+            localStorage.setItem('mf_categories', JSON.stringify(state.categories));
+            localStorage.setItem('mf_rules', JSON.stringify(state.rules));
+        }
+
+        // ==========================================
+        // 4. NAVIGACE A UI POMOCNÍCI
+        // ==========================================
+        function switchTab(tabName) {
+            const titles = {
+                dashboard: 'Přehled',
+                transactions: 'Pohyby na účtech',
+                add: 'Přidat / Import',
+                settings: 'Kategorie & Pravidla'
+            };
+            document.getElementById('header-title').innerText = titles[tabName] || 'Moje Finance';
+
+            // Skrýt všechny sekce
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${tabName}`).classList.remove('hidden');
+
+            // Zvýraznit aktivní ikonu v liště
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-emerald-600');
+                btn.classList.add('text-slate-400');
+            });
+            const activeBtn = document.getElementById(`nav-${tabName}`);
+            if (activeBtn && tabName !== 'add') {
+                activeBtn.classList.remove('text-slate-400');
+                activeBtn.classList.add('text-emerald-600');
+            }
+
+            // Překreslit obsah záložky
+            if (tabName === 'dashboard') renderDashboard();
+            if (tabName === 'transactions') renderTransactions();
+            if (tabName === 'add') populateSelects();
+            if (tabName === 'settings') renderSettings();
+        }
+
+        function showToast(text, icon = '✅') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-text').innerText = text;
+            document.getElementById('toast-icon').innerText = icon;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            toast.classList.add('opacity-100');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none');
+                toast.classList.remove('opacity-100');
+            }, 2800);
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('cs-CZ', {
+                style: 'currency',
+                currency: 'CZK',
+                maximumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function updateMonthLabel() {
+            const months = ['Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'];
+            document.getElementById('current-month-label').innerText = `${months[state.currentMonth]} ${state.currentYear}`;
+        }
+
+        function changeMonth(delta) {
+            state.currentMonth += delta;
+            if (state.currentMonth > 11) {
+                state.currentMonth = 0;
+                state.currentYear++;
+            } else if (state.currentMonth < 0) {
+                state.currentMonth = 11;
+                state.currentYear--;
+            }
+            updateMonthLabel();
+            renderDashboard();
+            renderTransactions();
+        }
+
+        function getFilteredTransactionsForMonth() {
+            return state.transactions.filter(tx => {
+                const d = new Date(tx.date);
+                return d.getFullYear() === state.currentYear && d.getMonth() === state.currentMonth;
+            });
+        }
+
+        function getCategoryById(id) {
+            return state.categories.find(c => c.id === id) || state.categories.find(c => c.id === 'cat_other') || { id: 'cat_other', name: 'Ostatní', color: '#64748B', icon: '📦' };
+        }
+
+        // ==========================================
+        // 5. DASHBOARD A GRAFY (CHART.JS)
+        // ==========================================
+        function renderDashboard() {
+            updateMonthLabel();
+            const monthTxs = getFilteredTransactionsForMonth();
+            
+            // CTA banner pokud nejsou vůbec žádná data
+            const cta = document.getElementById('empty-dashboard-cta');
+            if (state.transactions.length === 0) {
+                cta.classList.remove('hidden');
+            } else {
+                cta.classList.add('hidden');
+            }
+
+            let totalIncome = 0;
+            let totalExpense = 0;
+            const categoryTotals = {};
+
+            monthTxs.forEach(tx => {
+                if (tx.amount >= 0) {
+                    totalIncome += tx.amount;
+                } else {
+                    const absVal = Math.abs(tx.amount);
+                    totalExpense += absVal;
+                    categoryTotals[tx.categoryId] = (categoryTotals[tx.categoryId] || 0) + absVal;
+                }
+            });
+
+            const balance = totalIncome - totalExpense;
+            document.getElementById('dash-income').innerText = formatCurrency(totalIncome);
+            document.getElementById('dash-expense').innerText = formatCurrency(totalExpense);
+            document.getElementById('donut-center-total').innerText = formatCurrency(totalExpense);
+            document.getElementById('dash-tx-count').innerText = `${monthTxs.length} plateb`;
+
+            const badge = document.getElementById('balance-badge');
+            badge.innerText = `${balance >= 0 ? '+' : ''}${formatCurrency(balance)}`;
+            badge.className = `text-xs font-bold px-2.5 py-1 rounded-full ${balance >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`;
+
+            // Seřazení kategorií od největší útraty
+            const sortedCatIds = Object.keys(categoryTotals).sort((a, b) => categoryTotals[b] - categoryTotals[a]);
+            
+            const labels = [];
+            const dataValues = [];
+            const bgColors = [];
+            const breakdownContainer = document.getElementById('category-breakdown-list');
+            breakdownContainer.innerHTML = '';
+
+            if (sortedCatIds.length === 0) {
+                labels.push('Žádné výdaje');
+                dataValues.push(1);
+                bgColors.push('#e2e8f0');
+                breakdownContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-3">V tomto měsíci zatím nemáš žádné výdaje.</p>`;
+            } else {
+                sortedCatIds.forEach(catId => {
+                    const cat = getCategoryById(catId);
+                    const val = categoryTotals[catId];
+                    const pct = totalExpense > 0 ? Math.round((val / totalExpense) * 100) : 0;
+
+                    labels.push(cat.name);
+                    dataValues.push(val);
+                    bgColors.push(cat.color);
+
+                    breakdownContainer.innerHTML += `
+                        <div class="flex items-center justify-between pt-2.5 first:pt-0">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm" style="background-color: ${cat.color}20; color: ${cat.color}">
+                                    ${cat.icon}
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-800">${cat.name}</p>
+                                    <p class="text-[11px] text-slate-400">${pct} % z výdajů</p>
+                                </div>
+                            </div>
+                            <span class="text-xs font-extrabold text-slate-900">${formatCurrency(val)}</span>
+                        </div>
+                    `;
+                });
+            }
+
+            // Vykreslení Donut grafu
+            const donutCtx = document.getElementById('categoryDonutChart').getContext('2d');
+            if (donutChartInstance) donutChartInstance.destroy();
+            donutChartInstance = new Chart(donutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: bgColors,
+                        borderWidth: 3,
+                        borderColor: '#ffffff',
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '72%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: sortedCatIds.length > 0,
+                            callbacks: {
+                                label: (ctx) => ` ${ctx.label}: ${formatCurrency(ctx.raw)}`
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Vykreslení Trend grafu (denní výdaje a příjmy v měsíci)
+            renderTrendChart(monthTxs);
+        }
+
+        function renderTrendChart(monthTxs) {
+            const daysInMonth = new Date(state.currentYear, state.currentMonth + 1, 0).getDate();
+            const dayLabels = [];
+            const dailyExpenses = new Array(daysInMonth).fill(0);
+            const dailyIncomes = new Array(daysInMonth).fill(0);
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                dayLabels.push(`${i}.`);
+            }
+
+            monthTxs.forEach(tx => {
+                const day = new Date(tx.date).getDate();
+                if (day >= 1 && day <= daysInMonth) {
+                    if (tx.amount < 0) {
+                        dailyExpenses[day - 1] += Math.abs(tx.amount);
+                    } else {
+                        dailyIncomes[day - 1] += tx.amount;
+                    }
+                }
+            });
+
+            const trendCtx = document.getElementById('cashflowTrendChart').getContext('2d');
+            if (trendChartInstance) trendChartInstance.destroy();
+            trendChartInstance = new Chart(trendCtx, {
+                type: 'bar',
+                data: {
+                    labels: dayLabels,
+                    datasets: [
+                        {
+                            label: 'Výdaje',
+                            data: dailyExpenses,
+                            backgroundColor: '#f43f5e',
+                            borderRadius: 4,
+                            barPercentage: 0.7
+                        },
+                        {
+                            label: 'Příjmy',
+                            data: dailyIncomes,
+                            backgroundColor: '#10b981',
+                            borderRadius: 4,
+                            barPercentage: 0.7
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            align: 'end',
+                            labels: { boxWidth: 10, usePointStyle: true, font: { size: 11 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { maxTicksLimit: 10, font: { size: 10 }, color: '#94a3b8' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#f1f5f9' },
+                            ticks: {
+                                font: { size: 10 },
+                                color: '#94a3b8',
+                                callback: (v) => v >= 1000 ? (v / 1000) + 'k' : v
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ==========================================
+        // 6. SEZNAM TRANSAKCÍ A FILTROVÁNÍ
+        // ==========================================
+        function renderTransactions() {
+            populateFilterDropdown();
+            const search = document.getElementById('search-input').value.toLowerCase().trim();
+            const catFilter = document.getElementById('filter-category').value;
+            const bankFilter = document.getElementById('filter-bank').value;
+
+            let filtered = getFilteredTransactionsForMonth().filter(tx => {
+                const matchSearch = !search || tx.title.toLowerCase().includes(search);
+                const matchCat = catFilter === 'all' || tx.categoryId === catFilter;
+                const matchBank = bankFilter === 'all' || tx.bank === bankFilter;
+                return matchSearch && matchCat && matchBank;
+            });
+
+            // Seřadit od nejnovější
+            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            const container = document.getElementById('transactions-list');
+            container.innerHTML = '';
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-3xl p-8 text-center border border-slate-100">
+                        <span class="text-3xl block mb-2">🔍</span>
+                        <p class="text-sm font-bold text-slate-700">Žádné transakce nenalezeny</p>
+                        <p class="text-xs text-slate-400 mt-1">Zkus změnit měsíc, filtr nebo přidat nový pohyb.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Seskupení podle dne
+            const grouped = {};
+            filtered.forEach(tx => {
+                if (!grouped[tx.date]) grouped[tx.date] = [];
+                grouped[tx.date].push(tx);
+            });
+
+            Object.keys(grouped).forEach(dateStr => {
+                const d = new Date(dateStr);
+                const formattedDate = d.toLocaleDateString('cs-CZ', { weekday: 'short', day: 'numeric', month: 'long' });
+                const dayTxs = grouped[dateStr];
+                const daySum = dayTxs.reduce((sum, t) => sum + t.amount, 0);
+
+                let cardsHtml = '';
+                dayTxs.forEach(tx => {
+                    const cat = getCategoryById(tx.categoryId);
+                    const isExpense = tx.amount < 0;
+                    const bankBadgeColor = tx.bank === 'mBank' ? 'bg-rose-50 text-rose-600' : (tx.bank === 'ČSOB' ? 'bg-sky-50 text-sky-600' : 'bg-slate-100 text-slate-600');
+
+                    cardsHtml += `
+                        <div onclick="openTxEditModal('${tx.id}')" class="flex items-center justify-between p-3.5 hover:bg-slate-50 transition cursor-pointer active:bg-slate-100">
+                            <div class="flex items-center gap-3 min-w-0 pr-2">
+                                <div class="w-10 h-10 rounded-2xl flex-shrink-0 flex items-center justify-center text-lg shadow-2xs" style="background-color: ${cat.color}20; color: ${cat.color}">
+                                    ${cat.icon}
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-bold text-slate-800 truncate">${tx.title}</p>
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <span class="text-[11px] font-medium text-slate-400 truncate">${cat.name}</span>
+                                        <span class="text-[10px] font-bold px-1.5 py-0.2 rounded-md ${bankBadgeColor}">${tx.bank}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="text-sm font-extrabold flex-shrink-0 ${isExpense ? 'text-slate-900' : 'text-emerald-600'}">
+                                ${isExpense ? '' : '+'}${formatCurrency(tx.amount)}
+                            </span>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML += `
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between items-center px-2">
+                            <span class="text-xs font-bold text-slate-400 capitalize">${formattedDate}</span>
+                            <span class="text-xs font-semibold text-slate-400">${daySum > 0 ? '+' : ''}${formatCurrency(daySum)}</span>
+                        </div>
+                        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 divide-y divide-slate-50 overflow-hidden">
+                            ${cardsHtml}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function populateFilterDropdown() {
+            const filterSel = document.getElementById('filter-category');
+            const currentVal = filterSel.value;
+            filterSel.innerHTML = '<option value="all">Všechny kategorie</option>';
+            state.categories.forEach(cat => {
+                filterSel.innerHTML += `<option value="${cat.id}">${cat.icon} ${cat.name}</option>`;
+            });
+            filterSel.value = currentVal || 'all';
+        }
+
+        // ==========================================
+        // 7. RUČNÍ PŘIDÁNÍ TRANSAKCE A ÚPRAVA
+        // ==========================================
+        function setTxType(type) {
+            state.manualTxType = type;
+            const expBtn = document.getElementById('type-expense-btn');
+            const incBtn = document.getElementById('type-income-btn');
+            if (type === 'expense') {
+                expBtn.className = 'py-2 text-xs font-bold rounded-xl bg-white text-rose-600 shadow-sm transition';
+                incBtn.className = 'py-2 text-xs font-bold rounded-xl text-slate-500 transition';
+            } else {
+                incBtn.className = 'py-2 text-xs font-bold rounded-xl bg-white text-emerald-600 shadow-sm transition';
+                expBtn.className = 'py-2 text-xs font-bold rounded-xl text-slate-500 transition';
+                document.getElementById('tx-category').value = 'cat_income';
+            }
+        }
+
+        function populateSelects() {
+            const txCat = document.getElementById('tx-category');
+            const ruleCat = document.getElementById('rule-category');
+            txCat.innerHTML = '';
+            ruleCat.innerHTML = '';
+            state.categories.forEach(cat => {
+                const opt = `<option value="${cat.id}">${cat.icon} ${cat.name}</option>`;
+                txCat.innerHTML += opt;
+                ruleCat.innerHTML += opt;
+            });
+            document.getElementById('tx-date').valueAsDate = new Date();
+        }
+
+        function addManualTransaction(e) {
+            e.preventDefault();
+            const rawAmount = parseFloat(document.getElementById('tx-amount').value);
+            const title = document.getElementById('tx-title').value.trim();
+            const categoryId = document.getElementById('tx-category').value;
+            const bank = document.getElementById('tx-bank').value;
+            const date = document.getElementById('tx-date').value;
+
+            if (!rawAmount || !title || !date) return;
+
+            const finalAmount = state.manualTxType === 'expense' ? -Math.abs(rawAmount) : Math.abs(rawAmount);
+
+            const newTx = {
+                id: 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                date,
+                title,
+                amount: finalAmount,
+                categoryId,
+                bank
+            };
+
+            state.transactions.push(newTx);
+            saveState();
+
+            // Přepnout kalendář na měsíc přidané transakce
+            const d = new Date(date);
+            state.currentYear = d.getFullYear();
+            state.currentMonth = d.getMonth();
+
+            document.getElementById('manual-tx-form').reset();
+            setTxType('expense');
+            showToast('Pohyb byl úspěšně uložen');
+            switchTab('dashboard');
+        }
+
+        function openTxEditModal(txId) {
+            const tx = state.transactions.find(t => t.id === txId);
+            if (!tx) return;
+            state.editingTxId = txId;
+
+            document.getElementById('detail-tx-title').innerText = tx.title;
+            document.getElementById('detail-tx-date').innerText = `${new Date(tx.date).toLocaleDateString('cs-CZ')} • ${tx.bank}`;
+            const amtEl = document.getElementById('detail-tx-amount');
+            amtEl.innerText = `${tx.amount > 0 ? '+' : ''}${formatCurrency(tx.amount)}`;
+            amtEl.className = `font-extrabold text-base ${tx.amount < 0 ? 'text-rose-600' : 'text-emerald-600'}`;
+
+            const grid = document.getElementById('detail-category-grid');
+            grid.innerHTML = '';
+            state.categories.forEach(cat => {
+                const isSelected = cat.id === tx.categoryId;
+                grid.innerHTML += `
+                    <button type="button" onclick="changeTxCategory('${cat.id}')" class="flex items-center gap-2 p-2.5 rounded-2xl border text-left transition ${isSelected ? 'border-emerald-500 bg-emerald-50/70' : 'border-slate-100 hover:bg-slate-50'}">
+                        <span class="w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0" style="background-color: ${cat.color}20">${cat.icon}</span>
+                        <span class="text-xs font-bold text-slate-700 truncate">${cat.name}</span>
+                    </button>
+                `;
+            });
+
+            document.getElementById('tx-edit-modal').classList.remove('hidden');
+        }
+
+        function closeTxEditModal() {
+            document.getElementById('tx-edit-modal').classList.add('hidden');
+            state.editingTxId = null;
+        }
+
+        function changeTxCategory(newCatId) {
+            const tx = state.transactions.find(t => t.id === state.editingTxId);
+            if (tx) {
+                tx.categoryId = newCatId;
+                saveState();
+                openTxEditModal(tx.id); // překreslí výběr
+                renderTransactions();
+                renderDashboard();
+                showToast('Kategorie změněna');
+            }
+        }
+
+        function deleteCurrentTx() {
+            state.transactions = state.transactions.filter(t => t.id !== state.editingTxId);
+            saveState();
+            closeTxEditModal();
+            renderTransactions();
+            renderDashboard();
+            showToast('Platba smazána', '🗑️');
+        }
+
+        // ==========================================
+        // 8. CHYTRÝ CSV PARSER PRO mBANK A ČSOB
+        // ==========================================
+        function selectImportBank(bank) {
+            state.selectedImportBank = bank;
+            document.querySelectorAll('.import-bank-btn').forEach(btn => {
+                btn.className = 'import-bank-btn bg-slate-100 text-slate-600 font-semibold text-xs py-2 rounded-xl transition';
+            });
+            const active = document.getElementById(`bank-btn-${bank}`);
+            if (active) {
+                active.className = 'import-bank-btn bg-emerald-500 text-white font-bold text-xs py-2 rounded-xl transition';
+            }
+        }
+
+        function matchCategoryByRules(title, amount) {
+            if (amount > 0) return 'cat_income';
+            const lowerTitle = title.toLowerCase();
+            for (const rule of state.rules) {
+                if (rule.keyword && lowerTitle.includes(rule.keyword.toLowerCase())) {
+                    return rule.categoryId;
+                }
+            }
+            return 'cat_other';
+        }
+
+        function handleCSVUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const buffer = e.target.result;
+                // Zkusíme UTF-8, pokud obsahuje typické znaky rozbité češtiny (), dekódujeme jako windows-1250 (běžné u mBank a ČSOB)
+                let text = new TextDecoder('utf-8').decode(buffer);
+                if (text.includes('\uFFFD')) {
+                    text = new TextDecoder('windows-1250').decode(buffer);
+                }
+                parseAndImportCSV(text);
+                event.target.value = ''; // reset inputu
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function parseCSVLine(line, delimiter) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === delimiter && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            return result;
+        }
+
+        function normalizeCzechDate(dateStr) {
+            if (!dateStr) return null;
+            const clean = dateStr.replace(/"/g, '').trim();
+            // Formát DD.MM.YYYY nebo D.M.YYYY (ČSOB, mBank)
+            const czMatch = clean.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+            if (czMatch) {
+                const day = czMatch[1].padStart(2, '0');
+                const month = czMatch[2].padStart(2, '0');
+                const year = czMatch[3];
+                return `${year}-${month}-${day}`;
+            }
+            // Formát YYYY-MM-DD (mBank některé exporty)
+            const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (isoMatch) {
+                return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+            }
+            return null;
+        }
+
+        function parseCzechAmount(amountStr) {
+            if (!amountStr) return NaN;
+            // Odstranění mezer, pevných mezer (nbsp), měny CZK/Kč a převod čárky na tečku
+            const cleaned = amountStr
+                .replace(/"/g, '')
+                .replace(/CZK|Kč/gi, '')
+                .replace(/[\s\u00A0]/g, '')
+                .replace(',', '.');
+            return parseFloat(cleaned);
+        }
+
+        function parseAndImportCSV(csvText) {
+            const lines = csvText.split(/\r?\n/).filter(l => l.trim().length > 0);
+            if (lines.length < 2) {
+                showToast('Soubor je prázdný nebo nečitelný', '⚠️');
+                return;
+            }
+
+            // Detekce banky podle obsahu souboru
+            let detectedBank = state.selectedImportBank;
+            if (detectedBank === 'auto') {
+                if (csvText.includes('mBank') || csvText.includes('#Datum uskutečnění') || csvText.includes('#Popis transakce')) {
+                    detectedBank = 'mBank';
+                } else if (csvText.includes('ČSOB') || csvText.includes('datum zaúčtování') || csvText.includes('název protiúčtu')) {
+                    detectedBank = 'ČSOB';
+                } else {
+                    detectedBank = 'mBank';
+                }
+            }
+
+            // Najít řádek hlavičky (mBank má nad hlavičkou několik informačních řádků)
+            let headerIdx = -1;
+            let delimiter = ';';
+
+            for (let i = 0; i < Math.min(lines.length, 40); i++) {
+                const l = lines[i].toLowerCase();
+                if ((l.includes('datum') && (l.includes('částka') || l.includes('castka'))) || l.includes('#datum')) {
+                    headerIdx = i;
+                    delimiter = (lines[i].split(';').length > lines[i].split(',').length) ? ';' : ',';
+                    break;
+                }
+            }
+
+            if (headerIdx === -1) {
+                showToast('Nepodařilo se najít sloupce Datum a Částka', '⚠️');
+                return;
+            }
+
+            const headers = parseCSVLine(lines[headerIdx], delimiter).map(h => h.toLowerCase().replace(/^#/, '').trim());
+            
+            // Mapování indexů sloupců pro mBank i ČSOB
+            const dateIdx = headers.findIndex(h => h.includes('datum uskutečnění') || h.includes('datum zaúčtování') || h.includes('datum'));
+            const amountIdx = headers.findIndex(h => h === 'částka' || h.includes('částka v měně') || h.includes('částka'));
+            const titleIdx = headers.findIndex(h => h.includes('popis transakce') || h.includes('název protiúčtu') || h.includes('obchodník') || h.includes('zpráva'));
+            const noteIdx = headers.findIndex(h => h.includes('zpráva pro příjemce') || h.includes('poznámka') || h.includes('označení operace'));
+
+            if (dateIdx === -1 || amountIdx === -1) {
+                showToast('Chybí sloupec s datem nebo částkou', '⚠️');
+                return;
+            }
+
+            let importedCount = 0;
+            let latestDate = null;
+
+            for (let i = headerIdx + 1; i < lines.length; i++) {
+                const cols = parseCSVLine(lines[i], delimiter);
+                if (cols.length <= Math.max(dateIdx, amountIdx)) continue;
+
+                const isoDate = normalizeCzechDate(cols[dateIdx]);
+                const amount = parseCzechAmount(cols[amountIdx]);
+
+                if (!isoDate || isNaN(amount) || amount === 0) continue;
+
+                let title = (titleIdx !== -1 && cols[titleIdx]) ? cols[titleIdx].replace(/"/g, '').trim() : '';
+                const note = (noteIdx !== -1 && cols[noteIdx]) ? cols[noteIdx].replace(/"/g, '').trim() : '';
+                
+                if (!title && note) title = note;
+                if (!title) title = 'Bankovní transakce';
+                // Očištění vícenásobných mezer v názvu (časté u mBank)
+                title = title.replace(/\s{2,}/g, ' ');
+
+                // Kontrola duplicit (stejné datum, částka a název)
+                const isDuplicate = state.transactions.some(existing => 
+                    existing.date === isoDate && 
+                    Math.abs(existing.amount - amount) < 0.01 && 
+                    existing.title === title
+                );
+
+                if (!isDuplicate) {
+                    const catId = matchCategoryByRules(title + ' ' + note, amount);
+                    state.transactions.push({
+                        id: 'tx_' + Date.now() + '_' + i + '_' + Math.random().toString(36).substr(2, 4),
+                        date: isoDate,
+                        title: title,
+                        amount: amount,
+                        categoryId: catId,
+                        bank: detectedBank
+                    });
+                    importedCount++;
+                    if (!latestDate || isoDate > latestDate) latestDate = isoDate;
+                }
+            }
+
+            if (importedCount > 0) {
+                saveState();
+                if (latestDate) {
+                    const d = new Date(latestDate);
+                    state.currentYear = d.getFullYear();
+                    state.currentMonth = d.getMonth();
+                }
+                showToast(`Nahráno ${importedCount} plateb (${detectedBank})!`);
+                switchTab('dashboard');
+            } else {
+                showToast('Žádné nové platby k nahrání (možná duplicity)', 'ℹ️');
+            }
+        }
+
+        // ==========================================
+        // 9. SPRÁVA KATEGORIÍ A PRAVIDEL
+        // ==========================================
+        function renderSettings() {
+            // Kategorie
+            const catList = document.getElementById('categories-manage-list');
+            catList.innerHTML = '';
+            state.categories.forEach(cat => {
+                catList.innerHTML += `
+                    <div class="flex items-center justify-between p-2.5 bg-slate-50 rounded-2xl">
+                        <div class="flex items-center gap-3">
+                            <span class="w-9 h-9 rounded-full flex items-center justify-center text-base" style="background-color: ${cat.color}25; color: ${cat.color}">
+                                ${cat.icon}
+                            </span>
+                            <div>
+                                <p class="text-xs font-bold text-slate-800">${cat.name}</p>
+                                <span class="inline-block w-3 h-1.5 rounded-full" style="background-color: ${cat.color}"></span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="openCategoryModal('${cat.id}')" class="p-2 text-slate-400 hover:text-slate-700 text-xs font-bold">Upravit</button>
+                            ${cat.id !== 'cat_other' && cat.id !== 'cat_income' ? `<button onclick="deleteCategory('${cat.id}')" class="p-2 text-rose-400 hover:text-rose-600 text-xs font-bold">✕</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Pravidla
+            populateSelects();
+            const rulesList = document.getElementById('rules-list');
+            rulesList.innerHTML = '';
+            if (state.rules.length === 0) {
+                rulesList.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">Zatím nemáš žádná pravidla.</p>`;
+            } else {
+                state.rules.forEach(rule => {
+                    const cat = getCategoryById(rule.categoryId);
+                    rulesList.innerHTML += `
+                        <div class="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl">
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="font-bold text-slate-700 bg-white px-2 py-0.5 rounded-md border border-slate-200">"${rule.keyword}"</span>
+                                <span class="text-slate-400">→</span>
+                                <span class="font-semibold text-slate-700">${cat.icon} ${cat.name}</span>
+                            </div>
+                            <button onclick="deleteRule('${rule.id}')" class="text-slate-400 hover:text-rose-500 font-bold text-xs px-1.5">✕</button>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        function openCategoryModal(catId = null) {
+            const modal = document.getElementById('category-modal');
+            if (catId) {
+                const cat = getCategoryById(catId);
+                document.getElementById('cat-modal-title').innerText = 'Upravit kategorii';
+                document.getElementById('edit-cat-id').value = cat.id;
+                document.getElementById('edit-cat-name').value = cat.name;
+                document.getElementById('edit-cat-icon').value = cat.icon;
+                document.getElementById('edit-cat-color').value = cat.color;
+            } else {
+                document.getElementById('cat-modal-title').innerText = 'Nová kategorie';
+                document.getElementById('edit-cat-id').value = '';
+                document.getElementById('edit-cat-name').value = '';
+                document.getElementById('edit-cat-icon').value = '🏷️';
+                document.getElementById('edit-cat-color').value = '#10B981';
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function closeCategoryModal() {
+            document.getElementById('category-modal').classList.add('hidden');
+        }
+
+        function setCatEmoji(emoji) {
+            document.getElementById('edit-cat-icon').value = emoji;
+        }
+
+        function setCatColor(hex) {
+            document.getElementById('edit-cat-color').value = hex;
+        }
+
+        function saveCategory(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-cat-id').value;
+            const name = document.getElementById('edit-cat-name').value.trim();
+            const icon = document.getElementById('edit-cat-icon').value.trim() || '🏷️';
+            const color = document.getElementById('edit-cat-color').value;
+
+            if (!name) return;
+
+            if (id) {
+                const cat = state.categories.find(c => c.id === id);
+                if (cat) {
+                    cat.name = name;
+                    cat.icon = icon;
+                    cat.color = color;
+                }
+                showToast('Kategorie upravena');
+            } else {
+                state.categories.push({
+                    id: 'cat_' + Date.now(),
+                    name,
+                    icon,
+                    color
+                });
+                showToast('Nová kategorie vytvořena');
+            }
+
+            saveState();
+            closeCategoryModal();
+            renderSettings();
+            renderDashboard();
+        }
+
+        function deleteCategory(catId) {
+            // Přesuneme transakce z mazané kategorie do Ostatní
+            state.transactions.forEach(tx => {
+                if (tx.categoryId === catId) tx.categoryId = 'cat_other';
+            });
+            state.categories = state.categories.filter(c => c.id !== catId);
+            saveState();
+            renderSettings();
+            showToast('Kategorie smazána', '🗑️');
+        }
+
+        function addRule(e) {
+            e.preventDefault();
+            const keyword = document.getElementById('rule-keyword').value.trim();
+            const categoryId = document.getElementById('rule-category').value;
+            if (!keyword) return;
+
+            state.rules.unshift({
+                id: 'rule_' + Date.now(),
+                keyword,
+                categoryId
+            });
+            saveState();
+            document.getElementById('rule-keyword').value = '';
+            renderSettings();
+            showToast('Pravidlo přidáno');
+        }
+
+        function deleteRule(ruleId) {
+            state.rules = state.rules.filter(r => r.id !== ruleId);
+            saveState();
+            renderSettings();
+        }
+
+        function reapplyAllRules() {
+            let changed = 0;
+            state.transactions.forEach(tx => {
+                if (tx.amount < 0) {
+                    const matched = matchCategoryByRules(tx.title, tx.amount);
+                    if (matched !== 'cat_other' && matched !== tx.categoryId) {
+                        tx.categoryId = matched;
+                        changed++;
+                    }
+                }
+            });
+            saveState();
+            renderDashboard();
+            showToast(`Přetříděno ${changed} plateb`);
+        }
+
+        // ==========================================
+        // 10. ZÁLOHOVÁNÍ (JSON) A DEMO DATA
+        // ==========================================
+        function exportBackupJSON() {
+            const dataStr = JSON.stringify({
+                transactions: state.transactions,
+                categories: state.categories,
+                rules: state.rules,
+                exportedAt: new Date().toISOString()
+            }, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `moje-finance-zaloha-${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            showToast('Záloha stažena');
+        }
+
+        function importBackupJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed.transactions && parsed.categories) {
+                        state.transactions = parsed.transactions;
+                        state.categories = parsed.categories;
+                        if (parsed.rules) state.rules = parsed.rules;
+                        saveState();
+                        renderDashboard();
+                        renderSettings();
+                        showToast('Záloha úspěšně obnovena!');
+                    } else {
+                        showToast('Neplatný soubor zálohy', '⚠️');
+                    }
+                } catch (err) {
+                    showToast('Chyba při čtení zálohy', '⚠️');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function loadDemoData() {
+            const y = state.currentYear;
+            const m = String(state.currentMonth + 1).padStart(2, '0');
+            
+            const demoTxs = [
+                { id: 'd1', date: `${y}-${m}-01`, title: 'Brigáda / Výplata', amount: 18500, categoryId: 'cat_income', bank: 'mBank' },
+                { id: 'd2', date: `${y}-${m}-02`, title: 'Nájem kolej / byt', amount: -6500, categoryId: 'cat_bills', bank: 'ČSOB' },
+                { id: 'd3', date: `${y}-${m}-03`, title: 'Albert Supermarket', amount: -842, categoryId: 'cat_food', bank: 'mBank' },
+                { id: 'd4', date: `${y}-${m}-05`, title: 'České dráhy - jízdenka', amount: -289, categoryId: 'cat_transport', bank: 'ČSOB' },
+                { id: 'd5', date: `${y}-${m}-06`, title: 'Menza Univerzita oběd', amount: -115, categoryId: 'cat_school', bank: 'mBank' },
+                { id: 'd6', date: `${y}-${m}-08`, title: 'Spotify Premium', amount: -169, categoryId: 'cat_bills', bank: 'mBank' },
+                { id: 'd7', date: `${y}-${m}-10`, title: 'Cinema City + Popcorn', amount: -460, categoryId: 'cat_fun', bank: 'ČSOB' },
+                { id: 'd8', date: `${y}-${m}-12`, title: 'Lidl nákup', amount: -620, categoryId: 'cat_food', bank: 'mBank' },
+                { id: 'd9', date: `${y}-${m}-14`, title: 'Skripta a kopírování', amount: -340, categoryId: 'cat_school', bank: 'Hotovost' },
+                { id: 'd10', date: `${y}-${m}-15`, title: 'Zara tričko', amount: -799, categoryId: 'cat_clothes', bank: 'ČSOB' },
+                { id: 'd11', date: `${y}-${m}-17`, title: 'Wolt večeře s přáteli', amount: -530, categoryId: 'cat_food', bank: 'mBank' }
+            ];
+
+            state.transactions = [...state.transactions, ...demoTxs];
+            saveState();
+            renderDashboard();
+            showToast('Ukázková data načtena!');
+        }
+
+        function confirmClearAllData() {
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+        }
+
+        function executeClearAllData() {
+            localStorage.removeItem('mf_transactions');
+            localStorage.removeItem('mf_categories');
+            localStorage.removeItem('mf_rules');
+            state.transactions = [];
+            state.categories = [...DEFAULT_CATEGORIES];
+            state.rules = [...DEFAULT_RULES];
+            closeConfirmModal();
+            renderDashboard();
+            renderSettings();
+            showToast('Všechna data byla smazána', '🗑️');
+        }
+
+        // ==========================================
+        // 11. START APLIKACE
+        // ==========================================
+        window.onload = function() {
+            loadState();
+            populateSelects();
+            renderDashboard();
+        };
+    </script>
+</body>
+</html>
