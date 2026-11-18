@@ -46,7 +46,6 @@
 
     <!-- TAB 1: PŘEHLED -->
     <section id="tab-dashboard" class="space-y-4">
-      <!-- Karty příjmů a výdajů -->
       <div class="grid grid-cols-2 gap-3">
         <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-100">
           <div class="text-xs text-slate-400 font-medium">Příjmy</div>
@@ -71,7 +70,6 @@
             <span id="donutTotalAmount" class="text-xl font-extrabold text-slate-800">0 Kč</span>
           </div>
         </div>
-        <!-- Rozpis kategorií -->
         <div id="categoryBreakdown" class="mt-4 space-y-2.5"></div>
       </div>
 
@@ -86,7 +84,6 @@
 
     <!-- TAB 2: TRANSAKCE -->
     <section id="tab-transactions" class="hidden space-y-3">
-      <!-- Vyhledávání a filtry -->
       <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 space-y-2.5">
         <input id="searchInput" type="text" placeholder="Hledat obchodníka nebo poznámku..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-emerald-500" />
         <div class="flex gap-2 overflow-x-auto no-scrollbar">
@@ -102,18 +99,16 @@
         </div>
       </div>
 
-      <!-- Seznam plateb -->
       <div id="transactionsList" class="space-y-3"></div>
     </section>
 
-    <!-- TAB 3: PŘIDAT / IMPORT PDF & CSV -->
+    <!-- TAB 3: PŘIDAT / IMPORT CSV & PDF -->
     <section id="tab-add" class="hidden space-y-4">
-      <!-- Import výpisu -->
       <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
         <div class="flex items-center gap-2">
           <span class="text-xl">📄</span>
           <div>
-            <h2 class="font-bold text-sm text-slate-800">Nahrát výpis z banky (PDF / CSV)</h2>
+            <h2 class="font-bold text-sm text-slate-800">Nahrát výpis z banky (CSV / PDF)</h2>
             <p class="text-xs text-slate-400">Podporuje výpisy z mBank i ČSOB</p>
           </div>
         </div>
@@ -129,8 +124,8 @@
           <div>
             <label class="block text-[11px] font-semibold text-slate-500 mb-1">Soubor výpisu</label>
             <label class="flex items-center justify-center w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm py-2 px-3 rounded-xl cursor-pointer shadow-sm active:scale-95 transition">
-              <span>Vybrat PDF / CSV</span>
-              <input id="statementFileInput" type="file" accept=".pdf,.csv,.txt" class="hidden" />
+              <span>Vybrat CSV / PDF</span>
+              <input id="statementFileInput" type="file" accept=".csv,.pdf,.txt,text/csv,application/pdf" class="hidden" />
             </label>
           </div>
         </div>
@@ -191,7 +186,6 @@
 
     <!-- TAB 4: KATEGORIE, PRAVIDLA & ZÁLOHA -->
     <section id="tab-settings" class="hidden space-y-4">
-      <!-- Kategorie -->
       <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
         <div class="flex items-center justify-between">
           <h2 class="font-bold text-sm text-slate-800">Kategorie a barvy</h2>
@@ -210,7 +204,6 @@
         <div id="categoriesList" class="space-y-2"></div>
       </div>
 
-      <!-- Automatická pravidla -->
       <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
         <div>
           <h2 class="font-bold text-sm text-slate-800">Automatické třídění plateb</h2>
@@ -224,7 +217,6 @@
         <div id="rulesList" class="space-y-1.5"></div>
       </div>
 
-      <!-- Záloha a demo -->
       <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-2">
         <h2 class="font-bold text-sm text-slate-800">Záloha a správa dat</h2>
         <div class="grid grid-cols-2 gap-2">
@@ -290,12 +282,10 @@
   </div>
 
   <script>
-    // Nastavení PDF.js workeru
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
 
-    // Výchozí kategorie
     const DEFAULT_CATEGORIES = [
       { id: 'food', name: 'Jídlo & Nákupy', icon: '🍔', color: '#10b981' },
       { id: 'transport', name: 'Doprava & Vlaky', icon: '🚆', color: '#3b82f6' },
@@ -307,7 +297,6 @@
       { id: 'other', name: 'Ostatní', icon: '📦', color: '#64748b' }
     ];
 
-    // Výchozí pravidla (včetně příkladů z mBank výpisu)
     const DEFAULT_RULES = [
       { keyword: 'regiojet', categoryId: 'transport' },
       { keyword: 'rjcz', categoryId: 'transport' },
@@ -323,7 +312,7 @@
       categories: JSON.parse(localStorage.getItem('mf_categories')) || DEFAULT_CATEGORIES,
       rules: JSON.parse(localStorage.getItem('mf_rules')) || DEFAULT_RULES,
       transactions: JSON.parse(localStorage.getItem('mf_transactions')) || [],
-      selectedMonth: new Date().toISOString().slice(0, 7) // YYYY-MM
+      selectedMonth: new Date().toISOString().slice(0, 7)
     };
 
     let pendingImports = [];
@@ -426,12 +415,10 @@
       badge.className = `text-xs font-semibold px-2.5 py-0.5 rounded-full ${balance >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`;
       document.getElementById('donutTotalAmount').textContent = formatCurrency(expense);
 
-      // Seřazení kategorií podle útraty
       const sortedCats = Object.entries(catSums)
         .map(([catId, sum]) => ({ cat: getCategory(catId), sum }))
         .sort((a, b) => b.sum - a.sum);
 
-      // Donut Chart
       const donutCtx = document.getElementById('donutChart').getContext('2d');
       if (donutChartInstance) donutChartInstance.destroy();
 
@@ -454,7 +441,6 @@
         }
       });
 
-      // Seznam pod grafem
       const breakdownEl = document.getElementById('categoryBreakdown');
       if (!sortedCats.length) {
         breakdownEl.innerHTML = `<p class="text-xs text-center text-slate-400 py-2">V tomto měsíci zatím nejsou žádné výdaje.</p>`;
@@ -481,7 +467,6 @@
         }).join('');
       }
 
-      // Denní průběh (Bar Chart)
       const [y, m] = state.selectedMonth.split('-').map(Number);
       const daysInMonth = new Date(y, m, 0).getDate();
       const dailyTotals = Array(daysInMonth).fill(0);
@@ -537,7 +522,6 @@
         return;
       }
 
-      // Seskupení po dnech
       const grouped = {};
       filtered.forEach(t => {
         if (!grouped[t.date]) grouped[t.date] = [];
@@ -587,7 +571,7 @@
       document.getElementById(id).addEventListener('input', renderTransactions);
     });
 
-    // --- PARSER PDF & CSV (mBank + ČSOB) ---
+    // --- PARSER CSV & PDF (mBank + ČSOB) ---
     document.getElementById('statementFileInput').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -625,15 +609,128 @@
       e.target.value = '';
     });
 
+    function readFileTextSmart(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsText(file, 'windows-1250');
+      });
+    }
+
+    function normalizeDateString(raw) {
+      const clean = raw.trim();
+      // DD-MM-YYYY nebo DD.MM.YYYY
+      let m = clean.match(/^(\d{2})[-.](\d{2})[-.](\d{4})$/);
+      if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+      // YYYY-MM-DD
+      m = clean.match(/^(\d{4})[-.](\d{2})[-.](\d{2})$/);
+      if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+      return null;
+    }
+
+    function parseCzechAmount(raw) {
+      if (!raw) return NaN;
+      const cleaned = raw
+        .replace(/CZK|EUR|Kč/gi, '')
+        .replace(/[\s\u00A0\u202F]/g, '')
+        .replace(',', '.')
+        .trim();
+      if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return NaN;
+      return parseFloat(cleaned);
+    }
+
+    function parseCsvStatement(text) {
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      const results = [];
+
+      // Zjistíme, zda jde o mBank hlavičku (#Datum zaúčtování transakce;#Datum uskutečnění...)
+      const headerIdx = lines.findIndex(l => l.includes('#Datum') && l.includes('#Částka'));
+
+      if (headerIdx !== -1) {
+        for (let i = headerIdx + 1; i < lines.length; i++) {
+          const parts = lines[i].split(';').map(p => p.trim().replace(/^"|"$/g, '').trim());
+          if (parts.length < 10) continue;
+
+          const dateIso = normalizeDateString(parts[0]) || normalizeDateString(parts[1]);
+          const amount = parseCzechAmount(parts[9]);
+          if (!dateIso || isNaN(amount) || amount === 0) continue;
+
+          const txType = parts[2] || '';
+          const msg = parts[3] || '';
+          const counterparty = parts[4] || '';
+
+          // Vytažení čistého názvu obchodníka ze zprávy (např. "regiojet.cz /Brno DATUM PROVEDENÍ...")
+          let cleanMsg = msg
+            .replace(/\s+DATUM PROVEDENÍ TRANSAKCE:.*$/i, '')
+            .replace(/\s*\/[A-Za-zÀ-ž\s.-]+$/, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          let title = counterparty.trim() || cleanMsg || txType || 'Transakce';
+          if (counterparty.trim() && cleanMsg && cleanMsg.toLowerCase() !== counterparty.trim().toLowerCase()) {
+            title = `${counterparty.trim()} (${cleanMsg})`;
+          }
+
+          results.push({ date: dateIso, title, amount });
+        }
+        return results;
+      }
+
+      // Obecný CSV parser (pro ČSOB a jiné formáty)
+      lines.forEach(line => {
+        const sep = line.includes(';') ? ';' : ',';
+        const parts = line.split(sep).map(p => p.trim().replace(/^"|"$/g, '').trim());
+        let dateIso = null;
+        let amount = NaN;
+        let titleParts = [];
+
+        parts.forEach(p => {
+          const d = normalizeDateString(p);
+          if (d && !dateIso) {
+            dateIso = d;
+            return;
+          }
+          const amt = parseCzechAmount(p);
+          if (!isNaN(amt) && isNaN(amount) && /[,.]\d{2}/.test(p)) {
+            amount = amt;
+            return;
+          }
+          if (p.length > 2 && !/^\d+$/.test(p) && !/^'?\d+-\d+\/\d+'?$/.test(p)) {
+            titleParts.push(p);
+          }
+        });
+
+        if (dateIso && !isNaN(amount) && amount !== 0) {
+          results.push({
+            date: dateIso,
+            title: titleParts.slice(0, 2).join(' - ') || 'Platba',
+            amount
+          });
+        }
+      });
+
+      return results;
+    }
+
     async function parsePdfStatement(file, bank) {
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let fullLines = [];
+      let pdf;
+      try {
+        pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      } catch (err) {
+        if (err.name === 'PasswordException') {
+          const pwd = prompt('Tento PDF výpis je zaheslovaný. Zadej heslo:');
+          if (!pwd) throw new Error('Nebylo zadáno heslo.');
+          pdf = await pdfjsLib.getDocument({ data: arrayBuffer, password: pwd }).promise;
+        } else {
+          throw err;
+        }
+      }
 
+      let fullLines = [];
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         const page = await pdf.getPage(pageNum);
         const content = await page.getTextContent();
-        // Seskupení textových prvků podle Y souřadnice (řádky)
         const rows = {};
         content.items.forEach(item => {
           const y = Math.round(item.transform[5] / 4) * 4;
@@ -647,31 +744,17 @@
         });
       }
 
-      if (bank === 'mBank') {
-        return parseMBankPdfLines(fullLines);
-      } else {
-        return parseCsobPdfLines(fullLines);
-      }
-    }
-
-    // Specifický parser pro tabulku mBank (podle struktury: Č. | Datum uskutečnění | Datum zaúčtování | Popis | Částka | Zůstatek)
-    function parseMBankPdfLines(lines) {
       const results = [];
-      // Hledáme začátek řádku transakce: např. "2013 02.08.2026 02.08.2026 ..."
       const rowStartRegex = /^(\d{1,6})\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{2}\.\d{2}\.\d{4})\s+(.*)$/;
       let blocks = [];
       let currentBlock = null;
 
-      lines.forEach(line => {
+      fullLines.forEach(line => {
         const match = line.match(rowStartRegex);
         if (match) {
           if (currentBlock) blocks.push(currentBlock);
-          currentBlock = {
-            dateRaw: match[2],
-            lines: [match[4]]
-          };
+          currentBlock = { dateRaw: match[2], lines: [match[4]] };
         } else if (currentBlock) {
-          // Ignorujeme zápatí/záhlaví stránky
           if (!line.startsWith('Počáteční zůstatek') && !line.startsWith('Konečný zůstatek') && !line.startsWith('Strana ')) {
             currentBlock.lines.push(line);
           }
@@ -680,8 +763,6 @@
       if (currentBlock) blocks.push(currentBlock);
 
       blocks.forEach(block => {
-        const joined = block.lines.join(' | ');
-        // Na konci prvního řádku bloku jsou obvykle dvě částky: [Částka transakce] [Účetní zůstatek]
         const firstLine = block.lines[0];
         const amountsMatch = firstLine.match(/(-?\d[\d\s]*,\d{2})\s+(-?\d[\d\s]*,\d{2})\s*$/);
         let amount = 0;
@@ -690,23 +771,13 @@
         if (amountsMatch) {
           amount = parseFloat(amountsMatch[1].replace(/\s/g, '').replace(',', '.'));
           descFirstLine = firstLine.slice(0, amountsMatch.index).trim();
-        } else {
-          // Záložní hledání částky
-          const singleAmt = joined.match(/(-?\d[\d\s]*,\d{2})\s+CZK/);
-          if (singleAmt) amount = parseFloat(singleAmt[1].replace(/\s/g, '').replace(',', '.'));
         }
 
-        // Vytvoření čistého názvu obchodníka z dalších řádků bloku
         let merchant = descFirstLine;
         for (let i = 1; i < block.lines.length; i++) {
           const l = block.lines[i];
-          if (l.startsWith('DATUM PROVEDENÍ')) continue;
-          if (l.startsWith('XXXX XXXX') || /^CZK\d+/.test(l)) continue;
-          if (/^(VLAK\s+)?KS:\d+/.test(l)) continue;
-          // Odstranění opakované částky a "CZ -35,00 CZK..." u karetních transakcí
-          const cleaned = l.replace(/\s+CZ\s+-?\d[\d\s]*,\d{2}\s+CZK.*$/i, '')
-                           .replace(/\s+[A-Z]{2}\s+-?\d[\d\s]*,\d{2}\s+CZK.*$/i, '')
-                           .trim();
+          if (l.startsWith('DATUM PROVEDENÍ') || l.startsWith('XXXX XXXX') || /^CZK\d+/.test(l) || /^(VLAK\s+)?KS:\d+/.test(l)) continue;
+          const cleaned = l.replace(/\s+[A-Z]{2}\s+-?\d[\d\s]*,\d{2}\s+CZK.*$/i, '').trim();
           if (cleaned && !/^\d{6}-\d+\/\d+$/.test(cleaned)) {
             merchant = cleaned;
             break;
@@ -715,65 +786,10 @@
 
         const [dd, mm, yyyy] = block.dateRaw.split('.');
         if (amount !== 0 && yyyy) {
-          results.push({
-            date: `${yyyy}-${mm}-${dd}`,
-            title: merchant || descFirstLine,
-            amount
-          });
+          results.push({ date: `${yyyy}-${mm}-${dd}`, title: merchant || descFirstLine, amount });
         }
       });
 
-      return results;
-    }
-
-    // Obecný parser pro ČSOB PDF výpis
-    function parseCsobPdfLines(lines) {
-      const results = [];
-      const dateRegex = /^(\d{2}\.\d{2}\.\d{4})\s+(.*)$/;
-      lines.forEach((line, i) => {
-        const m = line.match(dateRegex);
-        if (m) {
-          const [dd, mm, yyyy] = m[1].split('.');
-          const rest = m[2];
-          const amtMatch = rest.match(/(-?\d[\d\s]*,\d{2})\s*$/);
-          if (amtMatch) {
-            const amount = parseFloat(amtMatch[1].replace(/\s/g, '').replace(',', '.'));
-            let title = rest.slice(0, amtMatch.index).trim();
-            if (lines[i + 1] && !lines[i + 1].match(dateRegex)) {
-              title += ' - ' + lines[i + 1].trim();
-            }
-            if (amount !== 0) {
-              results.push({ date: `${yyyy}-${mm}-${dd}`, title: title.slice(0, 60), amount });
-            }
-          }
-        }
-      });
-      return results;
-    }
-
-    // CSV Parser (záložní)
-    function readFileTextSmart(file) {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.readAsText(file, 'windows-1250');
-      });
-    }
-
-    function parseCsvStatement(text) {
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
-      const results = [];
-      lines.forEach(line => {
-        const parts = line.split(';').map(p => p.replace(/^"|"$/g, '').trim());
-        const datePart = parts.find(p => /^\d{2}\.\d{2}\.\d{4}$/.test(p));
-        const amtPart = parts.find(p => /^-?\d[\d\s]*[,.]\d{2}$/.test(p));
-        if (datePart && amtPart) {
-          const [dd, mm, yyyy] = datePart.split('.');
-          const amount = parseFloat(amtPart.replace(/\s/g, '').replace(',', '.'));
-          const title = parts.find(p => p !== datePart && p !== amtPart && p.length > 2 && !/^\d+$/.test(p)) || 'Platba';
-          if (amount !== 0) results.push({ date: `${yyyy}-${mm}-${dd}`, title, amount });
-        }
-      });
       return results;
     }
 
@@ -784,7 +800,6 @@
       document.getElementById('importPreviewCount').textContent = `Rozpoznáno ${pendingImports.length} plateb`;
 
       list.innerHTML = pendingImports.map((item, idx) => {
-        const cat = getCategory(item.categoryId);
         return `
           <div class="bg-slate-50 p-2.5 rounded-2xl flex items-center justify-between gap-2 text-xs">
             <input type="checkbox" ${item.selected ? 'checked' : ''} onchange="pendingImports[${idx}].selected = this.checked" class="rounded text-emerald-500" />
@@ -813,7 +828,6 @@
       let addedCount = 0;
 
       toAdd.forEach(item => {
-        // Kontrola duplicity
         const exists = state.transactions.some(t => t.date === item.date && t.amount === item.amount && t.title === item.title);
         if (!exists) {
           state.transactions.push({
@@ -829,7 +843,9 @@
       });
 
       if (toAdd.length > 0) {
-        state.selectedMonth = toAdd[0].date.slice(0, 7);
+        // Přepne přehled na měsíc poslední (nejnovější) nahrané platby
+        const sortedDates = toAdd.map(i => i.date).sort();
+        state.selectedMonth = sortedDates[sortedDates.length - 1].slice(0, 7);
       }
 
       saveState();
@@ -1040,7 +1056,7 @@
       const ym = state.selectedMonth;
       state.transactions = [
         { id: 'd1', date: `${ym}-02`, title: 'PŘÍCHOZÍ PLATBA', amount: 12000, account: 'mBank', categoryId: 'income' },
-        { id: 'd2', date: `${ym}-02`, title: 'regiojet.cz Brno', amount: -508, account: 'mBank', categoryId: 'transport' },
+        { id: 'd2', date: `${ym}-02`, title: 'regiojet.cz', amount: -508, account: 'mBank', categoryId: 'transport' },
         { id: 'd3', date: `${ym}-03`, title: 'Albert Supermarket', amount: -640, account: 'ČSOB', categoryId: 'food' },
         { id: 'd4', date: `${ym}-05`, title: 'Trading 212', amount: -1000, account: 'mBank', categoryId: 'invest' },
         { id: 'd5', date: `${ym}-08`, title: 'Kino & Večeře', amount: -490, account: 'ČSOB', categoryId: 'fun' }
