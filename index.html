@@ -11,6 +11,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -26,239 +27,288 @@
 </head>
 <body>
 
-  <!-- Horní lišta -->
-  <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 py-3 flex items-center justify-between">
-    <div class="flex items-center gap-2">
-      <div class="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center text-white font-bold shadow-sm">
-        Kč
-      </div>
-      <h1 class="font-bold text-lg tracking-tight text-slate-800">Moje Finance</h1>
-    </div>
-    <div class="flex items-center gap-1 bg-slate-100 rounded-full px-2 py-1">
-      <button id="prevMonth" class="p-1 text-slate-500 hover:text-slate-900 active:scale-90">◀</button>
-      <span id="currentMonthLabel" class="text-xs font-semibold px-2 min-w-[95px] text-center text-slate-700">Listopad 2026</span>
-      <button id="nextMonth" class="p-1 text-slate-500 hover:text-slate-900 active:scale-90">▶</button>
-    </div>
-  </header>
-
-  <!-- Hlavní obsah -->
-  <main class="max-w-md mx-auto px-4 pt-4">
-
-    <!-- TAB 1: PŘEHLED -->
-    <section id="tab-dashboard" class="space-y-4">
-      <div class="grid grid-cols-2 gap-3">
-        <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-100">
-          <div class="text-xs text-slate-400 font-medium">Příjmy</div>
-          <div id="dashIncome" class="text-lg font-bold text-emerald-600 mt-0.5">+0 Kč</div>
+  <!-- PŘIHLAŠOVACÍ OBRAZOVKA (SUPABASE) -->
+  <div id="authScreen" class="fixed inset-0 z-50 bg-slate-50 flex flex-col items-center justify-center p-5">
+    <div class="w-full max-w-sm bg-white rounded-3xl p-6 shadow-lg border border-slate-100 space-y-5">
+      <div class="flex flex-col items-center text-center">
+        <div class="w-14 h-14 rounded-2xl bg-emerald-500 flex items-center justify-center text-white text-2xl font-extrabold shadow-md mb-3">
+          Kč
         </div>
-        <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-100">
-          <div class="text-xs text-slate-400 font-medium">Výdaje</div>
-          <div id="dashExpense" class="text-lg font-bold text-rose-600 mt-0.5">-0 Kč</div>
-        </div>
+        <h1 class="text-xl font-bold text-slate-800">Moje Finance</h1>
+        <p class="text-xs text-slate-400 mt-1">Přihlas se pro synchronizaci mezi mobilem a PC</p>
       </div>
 
-      <!-- Donut Graf -->
-      <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
-        <div class="flex items-center justify-between mb-2">
-          <div>
-            <h2 class="font-bold text-sm text-slate-700">Výdaje podle kategorií</h2>
-            <p class="text-[10px] text-slate-400">Klepni na graf nebo kategorii pro detail plateb</p>
-          </div>
-          <span id="dashBalanceBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">Bilance: 0 Kč</span>
-        </div>
-        <div class="relative h-56 flex items-center justify-center cursor-pointer">
-          <canvas id="donutChart"></canvas>
-          <div id="donutCenterText" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Celkem výdaje</span>
-            <span id="donutTotalAmount" class="text-xl font-extrabold text-slate-800">0 Kč</span>
-          </div>
-        </div>
-        <div id="categoryBreakdown" class="mt-4 space-y-1.5"></div>
-      </div>
-
-      <!-- Průběh financí v měsíci -->
-      <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
-        <h2 class="font-bold text-sm text-slate-700 mb-3">Průběh výdajů ve dnech</h2>
-        <div class="h-40">
-          <canvas id="barChart"></canvas>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 2: TRANSAKCE -->
-    <section id="tab-transactions" class="hidden space-y-3">
-      <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 space-y-2.5">
-        <input id="searchInput" type="text" placeholder="Hledat obchodníka nebo poznámku..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-emerald-500" />
-        <div class="flex gap-2 overflow-x-auto no-scrollbar">
-          <select id="accountFilter" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700">
-            <option value="all">Všechny účty</option>
-            <option value="mBank">mBank</option>
-            <option value="ČSOB">ČSOB</option>
-            <option value="Hotovost">Hotovost</option>
-          </select>
-          <select id="categoryFilter" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700">
-            <option value="all">Všechny kategorie</option>
-          </select>
-        </div>
-      </div>
-
-      <div id="transactionsList" class="space-y-3"></div>
-    </section>
-
-    <!-- TAB 3: PŘIDAT / IMPORT CSV & PDF -->
-    <section id="tab-add" class="hidden space-y-4">
-      <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
-        <div class="flex items-center gap-2">
-          <span class="text-xl">📄</span>
-          <div>
-            <h2 class="font-bold text-sm text-slate-800">Nahrát výpis z banky (CSV / PDF)</h2>
-            <p class="text-xs text-slate-400">Podporuje výpisy z mBank i ČSOB</p>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-[11px] font-semibold text-slate-500 mb-1">Banka / Účet</label>
-            <select id="importBankSelect" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium">
-              <option value="mBank">mBank</option>
-              <option value="ČSOB">ČSOB</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-[11px] font-semibold text-slate-500 mb-1">Soubor výpisu</label>
-            <label class="flex items-center justify-center w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm py-2 px-3 rounded-xl cursor-pointer shadow-sm active:scale-95 transition">
-              <span>Vybrat CSV / PDF</span>
-              <input id="statementFileInput" type="file" accept=".csv,.pdf,.txt,text/csv,application/pdf" class="hidden" />
-            </label>
-          </div>
-        </div>
-
-        <!-- Náhled rozpoznaných plateb před uložením -->
-        <div id="importPreviewBox" class="hidden border-t border-slate-100 pt-3 space-y-2.5">
-          <div class="flex items-center justify-between">
-            <span id="importPreviewCount" class="text-xs font-bold text-slate-700">Nalezeno 0 plateb</span>
-            <button id="cancelImportBtn" class="text-xs text-slate-400 hover:text-rose-500">Zrušit</button>
-          </div>
-          <div id="importPreviewList" class="max-h-64 overflow-y-auto space-y-2 pr-1"></div>
-          <button id="confirmImportBtn" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-sm shadow-sm active:scale-95 transition">
-            Uložit vybrané transakce
-          </button>
-        </div>
-      </div>
-
-      <!-- Ruční přidání -->
-      <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
-        <h2 class="font-bold text-sm text-slate-800">Rychlé ruční zadání</h2>
-        <div class="grid grid-cols-2 gap-2">
-          <button type="button" id="typeExpenseBtn" class="py-2 rounded-xl text-xs font-bold bg-rose-500 text-white">Výdaj (-)</button>
-          <button type="button" id="typeIncomeBtn" class="py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600">Příjem (+)</button>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-[11px] text-slate-400 mb-1">Částka (Kč)</label>
-            <input id="manualAmount" type="number" step="0.01" placeholder="150" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold" />
-          </div>
-          <div>
-            <label class="block text-[11px] text-slate-400 mb-1">Datum</label>
-            <input id="manualDate" type="date" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm" />
-          </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">E-mail</label>
+          <input id="authEmail" type="email" placeholder="tvuj@email.cz" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500" />
         </div>
         <div>
-          <label class="block text-[11px] text-slate-400 mb-1">Název / Obchodník</label>
-          <input id="manualTitle" type="text" placeholder="Např. Oběd menza, Albert..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Heslo (min. 6 znaků)</label>
+          <input id="authPassword" type="password" placeholder="••••••" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-emerald-500" />
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-[11px] text-slate-400 mb-1">Kategorie</label>
-            <select id="manualCategory" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm"></select>
+      </div>
+
+      <div id="authErrorMsg" class="hidden text-xs text-rose-600 bg-rose-50 p-2.5 rounded-xl font-medium"></div>
+
+      <div class="space-y-2 pt-1">
+        <button id="loginBtn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-sm shadow-sm active:scale-95 transition">
+          Přihlásit se
+        </button>
+        <button id="signupBtn" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-xs active:scale-95 transition">
+          Vytvořit nový účet (první přihlášení)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HLAVNÍ APLIKACE (SKRYTÁ DO PŘIHLÁŠENÍ) -->
+  <div id="appContainer" class="hidden">
+
+    <!-- Horní lišta -->
+    <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center text-white font-bold shadow-sm">
+          Kč
+        </div>
+        <div>
+          <h1 class="font-bold text-base leading-tight tracking-tight text-slate-800">Moje Finance</h1>
+          <div id="syncStatus" class="text-[10px] text-emerald-600 font-medium">☁️ Synchronizováno</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-1 bg-slate-100 rounded-full px-2 py-1">
+        <button id="prevMonth" class="p-1 text-slate-500 hover:text-slate-900 active:scale-90">◀</button>
+        <span id="currentMonthLabel" class="text-xs font-semibold px-2 min-w-[90px] text-center text-slate-700">Listopad 2026</span>
+        <button id="nextMonth" class="p-1 text-slate-500 hover:text-slate-900 active:scale-90">▶</button>
+      </div>
+    </header>
+
+    <!-- Hlavní obsah -->
+    <main class="max-w-md mx-auto px-4 pt-4">
+
+      <!-- TAB 1: PŘEHLED -->
+      <section id="tab-dashboard" class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-100">
+            <div class="text-xs text-slate-400 font-medium">Příjmy</div>
+            <div id="dashIncome" class="text-lg font-bold text-emerald-600 mt-0.5">+0 Kč</div>
           </div>
-          <div>
-            <label class="block text-[11px] text-slate-400 mb-1">Účet</label>
-            <select id="manualAccount" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm">
+          <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-100">
+            <div class="text-xs text-slate-400 font-medium">Výdaje</div>
+            <div id="dashExpense" class="text-lg font-bold text-rose-600 mt-0.5">-0 Kč</div>
+          </div>
+        </div>
+
+        <!-- Donut Graf -->
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h2 class="font-bold text-sm text-slate-700">Výdaje podle kategorií</h2>
+              <p class="text-[10px] text-slate-400">Klepni na graf nebo kategorii pro detail plateb</p>
+            </div>
+            <span id="dashBalanceBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">Bilance: 0 Kč</span>
+          </div>
+          <div class="relative h-56 flex items-center justify-center cursor-pointer">
+            <canvas id="donutChart"></canvas>
+            <div id="donutCenterText" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Celkem výdaje</span>
+              <span id="donutTotalAmount" class="text-xl font-extrabold text-slate-800">0 Kč</span>
+            </div>
+          </div>
+          <div id="categoryBreakdown" class="mt-4 space-y-1.5"></div>
+        </div>
+
+        <!-- Průběh financí v měsíci -->
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
+          <h2 class="font-bold text-sm text-slate-700 mb-3">Průběh výdajů ve dnech</h2>
+          <div class="h-40">
+            <canvas id="barChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: TRANSAKCE -->
+      <section id="tab-transactions" class="hidden space-y-3">
+        <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 space-y-2.5">
+          <input id="searchInput" type="text" placeholder="Hledat obchodníka nebo poznámku..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-emerald-500" />
+          <div class="flex gap-2 overflow-x-auto no-scrollbar">
+            <select id="accountFilter" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700">
+              <option value="all">Všechny účty</option>
               <option value="mBank">mBank</option>
               <option value="ČSOB">ČSOB</option>
               <option value="Hotovost">Hotovost</option>
             </select>
+            <select id="categoryFilter" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700">
+              <option value="all">Všechny kategorie</option>
+            </select>
           </div>
         </div>
-        <button id="saveManualBtn" class="w-full bg-slate-900 text-white font-bold py-2.5 rounded-xl text-sm active:scale-95 transition">
-          Přidat záznam
+
+        <div id="transactionsList" class="space-y-3"></div>
+      </section>
+
+      <!-- TAB 3: PŘIDAT / IMPORT CSV & PDF -->
+      <section id="tab-add" class="hidden space-y-4">
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">📄</span>
+            <div>
+              <h2 class="font-bold text-sm text-slate-800">Nahrát výpis z banky (CSV / PDF)</h2>
+              <p class="text-xs text-slate-400">Podporuje výpisy z mBank i ČSOB</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 mb-1">Banka / Účet</label>
+              <select id="importBankSelect" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium">
+                <option value="mBank">mBank</option>
+                <option value="ČSOB">ČSOB</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 mb-1">Soubor výpisu</label>
+              <label class="flex items-center justify-center w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm py-2 px-3 rounded-xl cursor-pointer shadow-sm active:scale-95 transition">
+                <span>Vybrat CSV / PDF</span>
+                <input id="statementFileInput" type="file" accept=".csv,.pdf,.txt,text/csv,application/pdf" class="hidden" />
+              </label>
+            </div>
+          </div>
+
+          <!-- Náhled rozpoznaných plateb před uložením -->
+          <div id="importPreviewBox" class="hidden border-t border-slate-100 pt-3 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span id="importPreviewCount" class="text-xs font-bold text-slate-700">Nalezeno 0 plateb</span>
+              <button id="cancelImportBtn" class="text-xs text-slate-400 hover:text-rose-500">Zrušit</button>
+            </div>
+            <div id="importPreviewList" class="max-h-64 overflow-y-auto space-y-2 pr-1"></div>
+            <button id="confirmImportBtn" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-sm shadow-sm active:scale-95 transition">
+              Uložit vybrané transakce
+            </button>
+          </div>
+        </div>
+
+        <!-- Ruční přidání -->
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+          <h2 class="font-bold text-sm text-slate-800">Rychlé ruční zadání</h2>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="typeExpenseBtn" class="py-2 rounded-xl text-xs font-bold bg-rose-500 text-white">Výdaj (-)</button>
+            <button type="button" id="typeIncomeBtn" class="py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600">Příjem (+)</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Částka (Kč)</label>
+              <input id="manualAmount" type="number" step="0.01" placeholder="150" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Datum</label>
+              <input id="manualDate" type="date" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">Název / Obchodník</label>
+            <input id="manualTitle" type="text" placeholder="Např. Oběd menza, Albert..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Kategorie</label>
+              <select id="manualCategory" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm"></select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Účet</label>
+              <select id="manualAccount" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm">
+                <option value="mBank">mBank</option>
+                <option value="ČSOB">ČSOB</option>
+                <option value="Hotovost">Hotovost</option>
+              </select>
+            </div>
+          </div>
+          <button id="saveManualBtn" class="w-full bg-slate-900 text-white font-bold py-2.5 rounded-xl text-sm active:scale-95 transition">
+            Přidat záznam
+          </button>
+        </div>
+      </section>
+
+      <!-- TAB 4: KATEGORIE, PRAVIDLA & ÚČET -->
+      <section id="tab-settings" class="hidden space-y-4">
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="font-bold text-sm text-slate-800">Kategorie a barvy</h2>
+            <button id="toggleNewCatForm" class="text-xs font-bold text-emerald-600">+ Nová</button>
+          </div>
+
+          <div id="newCatForm" class="hidden bg-slate-50 p-3 rounded-2xl space-y-2">
+            <div class="flex gap-2">
+              <input id="newCatIcon" type="text" value="🏷️" maxlength="2" class="w-12 text-center bg-white border border-slate-200 rounded-xl py-1.5 text-base" />
+              <input id="newCatName" type="text" placeholder="Název kategorie" class="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-sm" />
+              <input id="newCatColor" type="color" value="#6366f1" class="w-10 h-9 rounded-xl border-0 cursor-pointer" />
+            </div>
+            <button id="addCategoryBtn" class="w-full bg-emerald-500 text-white font-bold py-1.5 rounded-xl text-xs">Uložit kategorii</button>
+          </div>
+
+          <div id="categoriesList" class="space-y-2"></div>
+        </div>
+
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
+          <div>
+            <h2 class="font-bold text-sm text-slate-800">Automatické třídění plateb</h2>
+            <p class="text-xs text-slate-400">Když popis platby obsahuje slovo, přiřadí se kategorie</p>
+          </div>
+          <div class="flex gap-2">
+            <input id="ruleKeyword" type="text" placeholder="Např. regiojet, albert..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs" />
+            <select id="ruleCategory" class="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs"></select>
+            <button id="addRuleBtn" class="bg-slate-900 text-white px-3 rounded-xl text-xs font-bold">+</button>
+          </div>
+          <div id="rulesList" class="space-y-1.5"></div>
+        </div>
+
+        <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="font-bold text-sm text-slate-800">Cloudový účet & Záloha</h2>
+              <p id="loggedUserEmail" class="text-xs text-slate-400">Přihlášen</p>
+            </div>
+            <button id="forceSyncBtn" class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">Obnovit z cloudu</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="exportBackupBtn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-xl text-xs">Exportovat zálohu</button>
+            <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-xl text-xs text-center cursor-pointer">
+              Obnovit ze zálohy
+              <input id="importBackupInput" type="file" accept=".json" class="hidden" />
+            </label>
+          </div>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button id="logoutBtn" class="bg-slate-800 text-white font-semibold py-2 rounded-xl text-xs">Odhlásit se</button>
+            <button id="clearAllBtn" class="bg-rose-50 text-rose-600 font-semibold py-2 rounded-xl text-xs">Smazat vše</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Spodní navigace -->
+    <nav class="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-100 safe-bottom">
+      <div class="max-w-md mx-auto grid grid-cols-4 h-16">
+        <button data-tab="dashboard" class="nav-btn flex flex-col items-center justify-center text-emerald-600 font-bold">
+          <span class="text-lg">📊</span>
+          <span class="text-[10px] mt-0.5">Přehled</span>
+        </button>
+        <button data-tab="transactions" class="nav-btn flex flex-col items-center justify-center text-slate-400">
+          <span class="text-lg">🧾</span>
+          <span class="text-[10px] mt-0.5">Pohyby</span>
+        </button>
+        <button data-tab="add" class="nav-btn flex flex-col items-center justify-center text-slate-400">
+          <span class="text-lg">➕</span>
+          <span class="text-[10px] mt-0.5">Import / +</span>
+        </button>
+        <button data-tab="settings" class="nav-btn flex flex-col items-center justify-center text-slate-400">
+          <span class="text-lg">🎨</span>
+          <span class="text-[10px] mt-0.5">Kategorie</span>
         </button>
       </div>
-    </section>
+    </nav>
 
-    <!-- TAB 4: KATEGORIE, PRAVIDLA & ZÁLOHA -->
-    <section id="tab-settings" class="hidden space-y-4">
-      <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
-        <div class="flex items-center justify-between">
-          <h2 class="font-bold text-sm text-slate-800">Kategorie a barvy</h2>
-          <button id="toggleNewCatForm" class="text-xs font-bold text-emerald-600">+ Nová</button>
-        </div>
-
-        <div id="newCatForm" class="hidden bg-slate-50 p-3 rounded-2xl space-y-2">
-          <div class="flex gap-2">
-            <input id="newCatIcon" type="text" value="🏷️" maxlength="2" class="w-12 text-center bg-white border border-slate-200 rounded-xl py-1.5 text-base" />
-            <input id="newCatName" type="text" placeholder="Název kategorie" class="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-sm" />
-            <input id="newCatColor" type="color" value="#6366f1" class="w-10 h-9 rounded-xl border-0 cursor-pointer" />
-          </div>
-          <button id="addCategoryBtn" class="w-full bg-emerald-500 text-white font-bold py-1.5 rounded-xl text-xs">Uložit kategorii</button>
-        </div>
-
-        <div id="categoriesList" class="space-y-2"></div>
-      </div>
-
-      <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-3">
-        <div>
-          <h2 class="font-bold text-sm text-slate-800">Automatické třídění plateb</h2>
-          <p class="text-xs text-slate-400">Když popis platby obsahuje slovo, přiřadí se kategorie</p>
-        </div>
-        <div class="flex gap-2">
-          <input id="ruleKeyword" type="text" placeholder="Např. regiojet, albert..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs" />
-          <select id="ruleCategory" class="bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs"></select>
-          <button id="addRuleBtn" class="bg-slate-900 text-white px-3 rounded-xl text-xs font-bold">+</button>
-        </div>
-        <div id="rulesList" class="space-y-1.5"></div>
-      </div>
-
-      <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 space-y-2">
-        <h2 class="font-bold text-sm text-slate-800">Záloha a správa dat</h2>
-        <div class="grid grid-cols-2 gap-2">
-          <button id="exportBackupBtn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-xl text-xs">Exportovat zálohu</button>
-          <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-xl text-xs text-center cursor-pointer">
-            Obnovit ze zálohy
-            <input id="importBackupInput" type="file" accept=".json" class="hidden" />
-          </label>
-        </div>
-        <div class="grid grid-cols-2 gap-2 pt-1">
-          <button id="loadDemoBtn" class="bg-emerald-50 text-emerald-700 font-semibold py-2 rounded-xl text-xs">Načíst ukázková data</button>
-          <button id="clearAllBtn" class="bg-rose-50 text-rose-600 font-semibold py-2 rounded-xl text-xs">Smazat vše</button>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Spodní navigace -->
-  <nav class="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-100 safe-bottom">
-    <div class="max-w-md mx-auto grid grid-cols-4 h-16">
-      <button data-tab="dashboard" class="nav-btn flex flex-col items-center justify-center text-emerald-600 font-bold">
-        <span class="text-lg">📊</span>
-        <span class="text-[10px] mt-0.5">Přehled</span>
-      </button>
-      <button data-tab="transactions" class="nav-btn flex flex-col items-center justify-center text-slate-400">
-        <span class="text-lg">🧾</span>
-        <span class="text-[10px] mt-0.5">Pohyby</span>
-      </button>
-      <button data-tab="add" class="nav-btn flex flex-col items-center justify-center text-slate-400">
-        <span class="text-lg">➕</span>
-        <span class="text-[10px] mt-0.5">Import / +</span>
-      </button>
-      <button data-tab="settings" class="nav-btn flex flex-col items-center justify-center text-slate-400">
-        <span class="text-lg">🎨</span>
-        <span class="text-[10px] mt-0.5">Kategorie</span>
-      </button>
-    </div>
-  </nav>
+  </div>
 
   <!-- Modal pro detail plateb v rozkliknuté kategorii -->
   <div id="categoryDetailModal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-4">
@@ -302,6 +352,11 @@
   </div>
 
   <script>
+    // --- SUPABASE KONFIGURACE ---
+    const SUPABASE_URL = 'https://pzlxlzexqaodtzhusqfx.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_6FUK7rIGILicuuwXoMZovw_VTybzeka';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
@@ -328,6 +383,7 @@
       { keyword: 'trading 212', categoryId: 'invest' }
     ];
 
+    let currentUser = null;
     let state = {
       categories: JSON.parse(localStorage.getItem('mf_categories')) || DEFAULT_CATEGORIES,
       rules: JSON.parse(localStorage.getItem('mf_rules')) || DEFAULT_RULES,
@@ -342,12 +398,139 @@
     let editingTxId = null;
     let activeDetailCatId = null;
 
-    function saveState() {
+    // --- CLOUD SYNCHRONIZACE ---
+    function setSyncStatus(text, isError = false) {
+      const el = document.getElementById('syncStatus');
+      if (!el) return;
+      el.textContent = text;
+      el.className = `text-[10px] font-medium ${isError ? 'text-rose-500' : 'text-emerald-600'}`;
+    }
+
+    async function saveState() {
       localStorage.setItem('mf_categories', JSON.stringify(state.categories));
       localStorage.setItem('mf_rules', JSON.stringify(state.rules));
       localStorage.setItem('mf_transactions', JSON.stringify(state.transactions));
+
+      if (!currentUser) return;
+      setSyncStatus('⏳ Ukládám do cloudu...');
+      const payload = {
+        categories: state.categories,
+        rules: state.rules,
+        transactions: state.transactions
+      };
+
+      const { error } = await sb
+        .from('user_finance_data')
+        .upsert({
+          user_id: currentUser.id,
+          payload: payload,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+      if (error) {
+        console.error('Chyba synchronizace:', error);
+        setSyncStatus('⚠️ Chyba synchronizace', true);
+      } else {
+        setSyncStatus('☁️ Synchronizováno');
+      }
     }
 
+    async function loadFromCloud() {
+      if (!currentUser) return;
+      setSyncStatus('⏳ Načítám z cloudu...');
+
+      const { data, error } = await sb
+        .from('user_finance_data')
+        .select('payload')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Chyba načítání:', error);
+        setSyncStatus('⚠️ Offline režim', true);
+        return;
+      }
+
+      if (data && data.payload) {
+        // V cloudu už existují data -> načteme je do zařízení
+        state.categories = data.payload.categories || DEFAULT_CATEGORIES;
+        state.rules = data.payload.rules || DEFAULT_RULES;
+        state.transactions = data.payload.transactions || [];
+        localStorage.setItem('mf_categories', JSON.stringify(state.categories));
+        localStorage.setItem('mf_rules', JSON.stringify(state.rules));
+        localStorage.setItem('mf_transactions', JSON.stringify(state.transactions));
+        setSyncStatus('☁️ Synchronizováno');
+      } else if (state.transactions.length > 0) {
+        // V cloudu zatím nic není, ale v telefonu/PC už jsou lokální data -> nahrajeme je do cloudu
+        await saveState();
+      } else {
+        setSyncStatus('☁️ Připraveno');
+      }
+
+      if (state.transactions.length > 0) {
+        const sortedDates = state.transactions.map(t => t.date).sort();
+        state.selectedMonth = sortedDates[sortedDates.length - 1].slice(0, 7);
+      }
+      refreshAll();
+    }
+
+    // --- AUTENTIZACE ---
+    function showAuthError(msg) {
+      const el = document.getElementById('authErrorMsg');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      document.getElementById('authErrorMsg').classList.add('hidden');
+      if (!email || !password) return showAuthError('Vyplň e-mail a heslo.');
+
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) return showAuthError('Chyba přihlášení: ' + error.message);
+      onUserAuthenticated(data.user);
+    });
+
+    document.getElementById('signupBtn').addEventListener('click', async () => {
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      document.getElementById('authErrorMsg').classList.add('hidden');
+      if (!email || password.length < 6) return showAuthError('Zadej platný e-mail a heslo (alespoň 6 znaků).');
+
+      const { data, error } = await sb.auth.signUp({ email, password });
+      if (error) return showAuthError('Chyba registrace: ' + error.message);
+      if (data.user) {
+        onUserAuthenticated(data.user);
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await sb.auth.signOut();
+      currentUser = null;
+      document.getElementById('appContainer').classList.add('hidden');
+      document.getElementById('authScreen').classList.remove('hidden');
+    });
+
+    document.getElementById('forceSyncBtn').addEventListener('click', loadFromCloud);
+
+    async function onUserAuthenticated(user) {
+      currentUser = user;
+      document.getElementById('loggedUserEmail').textContent = user.email;
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('appContainer').classList.remove('hidden');
+      await loadFromCloud();
+    }
+
+    // Automatická kontrola přihlášení při otevření stránky
+    (async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session && session.user) {
+        onUserAuthenticated(session.user);
+      }
+    })();
+
+    // --- POMOCNÉ FUNKCE ---
     function formatCurrency(num) {
       return Math.round(num).toLocaleString('cs-CZ') + ' Kč';
     }
@@ -409,7 +592,7 @@
       refreshAll();
     });
 
-    // --- DETAIL KATEGORIE (PO KLIKNUTÍ NA GRAF NEBO KATEGORII) ---
+    // --- DETAIL KATEGORIE ---
     window.openCategoryDetail = function(catId) {
       const cat = getCategory(catId);
       const txs = state.transactions
@@ -642,7 +825,7 @@
       document.getElementById(id).addEventListener('input', renderTransactions);
     });
 
-    // --- PARSER CSV & PDF (mBank + ČSOB) ---
+    // --- PARSER CSV & PDF ---
     document.getElementById('statementFileInput').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -677,493 +860,4 @@
         console.error(err);
         alert('Chyba při čtení souboru: ' + err.message);
       }
-      e.target.value = '';
-    });
-
-    function readFileTextSmart(file) {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.readAsText(file, 'windows-1250');
-      });
-    }
-
-    function normalizeDateString(raw) {
-      const clean = raw.trim();
-      let m = clean.match(/^(\d{2})[-.](\d{2})[-.](\d{4})$/);
-      if (m) return `${m[3]}-${m[2]}-${m[1]}`;
-      m = clean.match(/^(\d{4})[-.](\d{2})[-.](\d{2})$/);
-      if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-      return null;
-    }
-
-    function parseCzechAmount(raw) {
-      if (!raw) return NaN;
-      const cleaned = raw
-        .replace(/CZK|EUR|Kč/gi, '')
-        .replace(/[\s\u00A0\u202F]/g, '')
-        .replace(',', '.')
-        .trim();
-      if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return NaN;
-      return parseFloat(cleaned);
-    }
-
-    function parseCsvStatement(text) {
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
-      const results = [];
-
-      const headerIdx = lines.findIndex(l => l.includes('#Datum') && l.includes('#Částka'));
-
-      if (headerIdx !== -1) {
-        for (let i = headerIdx + 1; i < lines.length; i++) {
-          const parts = lines[i].split(';').map(p => p.trim().replace(/^"|"$/g, '').trim());
-          if (parts.length < 10) continue;
-
-          const dateIso = normalizeDateString(parts[0]) || normalizeDateString(parts[1]);
-          const amount = parseCzechAmount(parts[9]);
-          if (!dateIso || isNaN(amount) || amount === 0) continue;
-
-          const txType = parts[2] || '';
-          const msg = parts[3] || '';
-          const counterparty = parts[4] || '';
-
-          let cleanMsg = msg
-            .replace(/\s+DATUM PROVEDENÍ TRANSAKCE:.*$/i, '')
-            .replace(/\s*\/[A-Za-zÀ-ž\s.-]+$/, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-
-          let title = counterparty.trim() || cleanMsg || txType || 'Transakce';
-          if (counterparty.trim() && cleanMsg && cleanMsg.toLowerCase() !== counterparty.trim().toLowerCase()) {
-            title = `${counterparty.trim()} (${cleanMsg})`;
-          }
-
-          results.push({ date: dateIso, title, amount });
-        }
-        return results;
-      }
-
-      lines.forEach(line => {
-        const sep = line.includes(';') ? ';' : ',';
-        const parts = line.split(sep).map(p => p.trim().replace(/^"|"$/g, '').trim());
-        let dateIso = null;
-        let amount = NaN;
-        let titleParts = [];
-
-        parts.forEach(p => {
-          const d = normalizeDateString(p);
-          if (d && !dateIso) {
-            dateIso = d;
-            return;
-          }
-          const amt = parseCzechAmount(p);
-          if (!isNaN(amt) && isNaN(amount) && /[,.]\d{2}/.test(p)) {
-            amount = amt;
-            return;
-          }
-          if (p.length > 2 && !/^\d+$/.test(p) && !/^'?\d+-\d+\/\d+'?$/.test(p)) {
-            titleParts.push(p);
-          }
-        });
-
-        if (dateIso && !isNaN(amount) && amount !== 0) {
-          results.push({
-            date: dateIso,
-            title: titleParts.slice(0, 2).join(' - ') || 'Platba',
-            amount
-          });
-        }
-      });
-
-      return results;
-    }
-
-    async function parsePdfStatement(file, bank) {
-      const arrayBuffer = await file.arrayBuffer();
-      let pdf;
-      try {
-        pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      } catch (err) {
-        if (err.name === 'PasswordException') {
-          const pwd = prompt('Tento PDF výpis je zaheslovaný. Zadej heslo:');
-          if (!pwd) throw new Error('Nebylo zadáno heslo.');
-          pdf = await pdfjsLib.getDocument({ data: arrayBuffer, password: pwd }).promise;
-        } else {
-          throw err;
-        }
-      }
-
-      let fullLines = [];
-      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-        const page = await pdf.getPage(pageNum);
-        const content = await page.getTextContent();
-        const rows = {};
-        content.items.forEach(item => {
-          const y = Math.round(item.transform[5] / 4) * 4;
-          if (!rows[y]) rows[y] = [];
-          rows[y].push({ x: item.transform[4], str: item.str });
-        });
-        const sortedY = Object.keys(rows).map(Number).sort((a, b) => b - a);
-        sortedY.forEach(y => {
-          const lineStr = rows[y].sort((a, b) => a.x - b.x).map(i => i.str).join(' ').replace(/\s+/g, ' ').trim();
-          if (lineStr) fullLines.push(lineStr);
-        });
-      }
-
-      const results = [];
-      const rowStartRegex = /^(\d{1,6})\s+(\d{2}\.\d{2}\.\d{4})\s+(\d{2}\.\d{2}\.\d{4})\s+(.*)$/;
-      let blocks = [];
-      let currentBlock = null;
-
-      fullLines.forEach(line => {
-        const match = line.match(rowStartRegex);
-        if (match) {
-          if (currentBlock) blocks.push(currentBlock);
-          currentBlock = { dateRaw: match[2], lines: [match[4]] };
-        } else if (currentBlock) {
-          if (!line.startsWith('Počáteční zůstatek') && !line.startsWith('Konečný zůstatek') && !line.startsWith('Strana ')) {
-            currentBlock.lines.push(line);
-          }
-        }
-      });
-      if (currentBlock) blocks.push(currentBlock);
-
-      blocks.forEach(block => {
-        const firstLine = block.lines[0];
-        const amountsMatch = firstLine.match(/(-?\d[\d\s]*,\d{2})\s+(-?\d[\d\s]*,\d{2})\s*$/);
-        let amount = 0;
-        let descFirstLine = firstLine;
-
-        if (amountsMatch) {
-          amount = parseFloat(amountsMatch[1].replace(/\s/g, '').replace(',', '.'));
-          descFirstLine = firstLine.slice(0, amountsMatch.index).trim();
-        }
-
-        let merchant = descFirstLine;
-        for (let i = 1; i < block.lines.length; i++) {
-          const l = block.lines[i];
-          if (l.startsWith('DATUM PROVEDENÍ') || l.startsWith('XXXX XXXX') || /^CZK\d+/.test(l) || /^(VLAK\s+)?KS:\d+/.test(l)) continue;
-          const cleaned = l.replace(/\s+[A-Z]{2}\s+-?\d[\d\s]*,\d{2}\s+CZK.*$/i, '').trim();
-          if (cleaned && !/^\d{6}-\d+\/\d+$/.test(cleaned)) {
-            merchant = cleaned;
-            break;
-          }
-        }
-
-        const [dd, mm, yyyy] = block.dateRaw.split('.');
-        if (amount !== 0 && yyyy) {
-          results.push({ date: `${yyyy}-${mm}-${dd}`, title: merchant || descFirstLine, amount });
-        }
-      });
-
-      return results;
-    }
-
-    function renderImportPreview() {
-      const box = document.getElementById('importPreviewBox');
-      const list = document.getElementById('importPreviewList');
-      box.classList.remove('hidden');
-      document.getElementById('importPreviewCount').textContent = `Rozpoznáno ${pendingImports.length} plateb`;
-
-      list.innerHTML = pendingImports.map((item, idx) => {
-        return `
-          <div class="bg-slate-50 p-2.5 rounded-2xl flex items-center justify-between gap-2 text-xs">
-            <input type="checkbox" ${item.selected ? 'checked' : ''} onchange="pendingImports[${idx}].selected = this.checked" class="rounded text-emerald-500" />
-            <div class="flex-1 min-w-0">
-              <div class="font-bold text-slate-800 truncate">${item.title}</div>
-              <div class="text-[10px] text-slate-400">${item.date}</div>
-            </div>
-            <select onchange="pendingImports[${idx}].categoryId = this.value" class="bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-[11px]">
-              ${state.categories.map(c => `<option value="${c.id}" ${c.id === item.categoryId ? 'selected' : ''}>${c.icon} ${c.name}</option>`).join('')}
-            </select>
-            <div class="font-bold shrink-0 ${item.amount >= 0 ? 'text-emerald-600' : 'text-slate-800'}">
-              ${formatCurrency(item.amount)}
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    document.getElementById('cancelImportBtn').addEventListener('click', () => {
-      pendingImports = [];
-      document.getElementById('importPreviewBox').classList.add('hidden');
-    });
-
-    document.getElementById('confirmImportBtn').addEventListener('click', () => {
-      const toAdd = pendingImports.filter(i => i.selected);
-      let addedCount = 0;
-
-      toAdd.forEach(item => {
-        const exists = state.transactions.some(t => t.date === item.date && t.amount === item.amount && t.title === item.title);
-        if (!exists) {
-          state.transactions.push({
-            id: 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-            date: item.date,
-            title: item.title,
-            amount: item.amount,
-            account: item.account,
-            categoryId: item.categoryId
-          });
-          addedCount++;
-        }
-      });
-
-      if (toAdd.length > 0) {
-        const sortedDates = toAdd.map(i => i.date).sort();
-        state.selectedMonth = sortedDates[sortedDates.length - 1].slice(0, 7);
-      }
-
-      saveState();
-      pendingImports = [];
-      document.getElementById('importPreviewBox').classList.add('hidden');
-      alert(`Uloženo ${addedCount} nových transakcí.`);
-      document.querySelector('[data-tab="dashboard"]').click();
-    });
-
-    // --- RUČNÍ ZADÁNÍ ---
-    document.getElementById('manualDate').value = new Date().toISOString().slice(0, 10);
-
-    document.getElementById('typeExpenseBtn').addEventListener('click', () => {
-      manualType = 'expense';
-      document.getElementById('typeExpenseBtn').className = 'py-2 rounded-xl text-xs font-bold bg-rose-500 text-white';
-      document.getElementById('typeIncomeBtn').className = 'py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600';
-    });
-
-    document.getElementById('typeIncomeBtn').addEventListener('click', () => {
-      manualType = 'income';
-      document.getElementById('typeIncomeBtn').className = 'py-2 rounded-xl text-xs font-bold bg-emerald-500 text-white';
-      document.getElementById('typeExpenseBtn').className = 'py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600';
-    });
-
-    document.getElementById('saveManualBtn').addEventListener('click', () => {
-      const rawAmt = parseFloat(document.getElementById('manualAmount').value);
-      const date = document.getElementById('manualDate').value;
-      const title = document.getElementById('manualTitle').value.trim();
-      const categoryId = document.getElementById('manualCategory').value;
-      const account = document.getElementById('manualAccount').value;
-
-      if (!rawAmt || !date || !title) {
-        alert('Vyplň částku, datum a název.');
-        return;
-      }
-
-      const amount = manualType === 'expense' ? -Math.abs(rawAmt) : Math.abs(rawAmt);
-      state.transactions.push({
-        id: 'tx_' + Date.now(),
-        date,
-        title,
-        amount,
-        account,
-        categoryId
-      });
-
-      state.selectedMonth = date.slice(0, 7);
-      saveState();
-      document.getElementById('manualAmount').value = '';
-      document.getElementById('manualTitle').value = '';
-      document.querySelector('[data-tab="dashboard"]').click();
-    });
-
-    // --- ÚPRAVA TRANSAKCE V MODALU ---
-    window.openEditModal = function(txId) {
-      const tx = state.transactions.find(t => t.id === txId);
-      if (!tx) return;
-      editingTxId = txId;
-      document.getElementById('modalTxTitle').textContent = tx.title;
-      document.getElementById('modalTxMeta').textContent = `${tx.date} • ${tx.account} • ${formatCurrency(tx.amount)}`;
-      document.getElementById('modalSaveRuleCheck').checked = false;
-
-      const grid = document.getElementById('modalCategoryGrid');
-      grid.innerHTML = state.categories.map(c => `
-        <button onclick="assignCategoryToTx('${c.id}')" class="flex items-center gap-2 p-2.5 rounded-2xl border text-left text-xs font-semibold ${tx.categoryId === c.id ? 'border-emerald-500 bg-emerald-50' : 'border-slate-100 hover:bg-slate-50'}">
-          <span>${c.icon}</span>
-          <span class="truncate">${c.name}</span>
-        </button>
-      `).join('');
-
-      document.getElementById('editTxModal').classList.remove('hidden');
-    };
-
-    window.assignCategoryToTx = function(catId) {
-      const tx = state.transactions.find(t => t.id === editingTxId);
-      if (!tx) return;
-      tx.categoryId = catId;
-
-      if (document.getElementById('modalSaveRuleCheck').checked) {
-        const keyword = tx.title.split(' ')[0].toLowerCase();
-        if (keyword.length > 2) {
-          state.rules.push({ keyword, categoryId: catId });
-          state.transactions.forEach(t => {
-            if (t.title.toLowerCase().includes(keyword)) t.categoryId = catId;
-          });
-        }
-      }
-
-      saveState();
-      document.getElementById('editTxModal').classList.add('hidden');
-      refreshAll();
-      if (activeDetailCatId) {
-        const remaining = state.transactions.filter(t => t.date.startsWith(state.selectedMonth) && t.categoryId === activeDetailCatId && t.amount < 0);
-        if (remaining.length) {
-          openCategoryDetail(activeDetailCatId);
-        } else {
-          activeDetailCatId = null;
-          document.getElementById('categoryDetailModal').classList.add('hidden');
-        }
-      }
-    };
-
-    document.getElementById('closeEditModal').addEventListener('click', () => {
-      document.getElementById('editTxModal').classList.add('hidden');
-    });
-
-    document.getElementById('deleteTxBtn').addEventListener('click', () => {
-      state.transactions = state.transactions.filter(t => t.id !== editingTxId);
-      saveState();
-      document.getElementById('editTxModal').classList.add('hidden');
-      refreshAll();
-      if (activeDetailCatId) openCategoryDetail(activeDetailCatId);
-    });
-
-    // --- KATEGORIE & PRAVIDLA ---
-    function renderSettings() {
-      const catList = document.getElementById('categoriesList');
-      catList.innerHTML = state.categories.map(c => `
-        <div class="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-2xl text-xs">
-          <div class="flex items-center gap-2.5">
-            <span class="w-3 h-3 rounded-full" style="background-color: ${c.color}"></span>
-            <span class="text-base">${c.icon}</span>
-            <span class="font-semibold text-slate-700">${c.name}</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <input type="color" value="${c.color}" onchange="updateCategoryColor('${c.id}', this.value)" class="w-6 h-6 rounded cursor-pointer border-0 bg-transparent" />
-            ${c.id !== 'other' && c.id !== 'income' ? `<button onclick="deleteCategory('${c.id}')" class="text-slate-400 hover:text-rose-500 font-bold px-1">✕</button>` : ''}
-          </div>
-        </div>
-      `).join('');
-
-      const rulesList = document.getElementById('rulesList');
-      rulesList.innerHTML = state.rules.map((r, idx) => {
-        const cat = getCategory(r.categoryId);
-        return `
-          <div class="flex items-center justify-between bg-slate-50 px-3 py-1.5 rounded-xl text-xs">
-            <span>„<strong>${r.keyword}</strong>“ → ${cat.icon} ${cat.name}</span>
-            <button onclick="deleteRule(${idx})" class="text-slate-400 hover:text-rose-500 font-bold">✕</button>
-          </div>
-        `;
-      }).join('');
-    }
-
-    window.updateCategoryColor = function(id, color) {
-      const cat = state.categories.find(c => c.id === id);
-      if (cat) { cat.color = color; saveState(); renderSettings(); }
-    };
-
-    window.deleteCategory = function(id) {
-      state.categories = state.categories.filter(c => c.id !== id);
-      state.transactions.forEach(t => { if (t.categoryId === id) t.categoryId = 'other'; });
-      saveState();
-      refreshAll();
-    };
-
-    window.deleteRule = function(idx) {
-      state.rules.splice(idx, 1);
-      saveState();
-      renderSettings();
-    };
-
-    document.getElementById('toggleNewCatForm').addEventListener('click', () => {
-      document.getElementById('newCatForm').classList.toggle('hidden');
-    });
-
-    document.getElementById('addCategoryBtn').addEventListener('click', () => {
-      const icon = document.getElementById('newCatIcon').value.trim() || '🏷️';
-      const name = document.getElementById('newCatName').value.trim();
-      const color = document.getElementById('newCatColor').value;
-      if (!name) return;
-
-      state.categories.push({ id: 'cat_' + Date.now(), name, icon, color });
-      document.getElementById('newCatName').value = '';
-      document.getElementById('newCatForm').classList.add('hidden');
-      saveState();
-      refreshAll();
-    });
-
-    document.getElementById('addRuleBtn').addEventListener('click', () => {
-      const keyword = document.getElementById('ruleKeyword').value.trim().toLowerCase();
-      const categoryId = document.getElementById('ruleCategory').value;
-      if (!keyword) return;
-      state.rules.push({ keyword, categoryId });
-      document.getElementById('ruleKeyword').value = '';
-      saveState();
-      renderSettings();
-    });
-
-    // --- ZÁLOHA & DEMO ---
-    document.getElementById('exportBackupBtn').addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `finance-zaloha-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-    });
-
-    document.getElementById('importBackupInput').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const data = JSON.parse(reader.result);
-          if (data.transactions && data.categories) {
-            state = data;
-            saveState();
-            refreshAll();
-            alert('Záloha úspěšně obnovena.');
-          }
-        } catch { alert('Neplatný záložní soubor.'); }
-      };
-      reader.readAsText(file);
-    });
-
-    document.getElementById('loadDemoBtn').addEventListener('click', () => {
-      const ym = state.selectedMonth;
-      state.transactions = [
-        { id: 'd1', date: `${ym}-02`, title: 'PŘÍCHOZÍ PLATBA', amount: 12000, account: 'mBank', categoryId: 'income' },
-        { id: 'd2', date: `${ym}-02`, title: 'regiojet.cz', amount: -508, account: 'mBank', categoryId: 'transport' },
-        { id: 'd3', date: `${ym}-03`, title: 'Albert Supermarket', amount: -640, account: 'ČSOB', categoryId: 'food' },
-        { id: 'd4', date: `${ym}-05`, title: 'Trading 212', amount: -1000, account: 'mBank', categoryId: 'invest' },
-        { id: 'd5', date: `${ym}-08`, title: 'Kino & Večeře', amount: -490, account: 'ČSOB', categoryId: 'fun' }
-      ];
-      saveState();
-      refreshAll();
-      document.querySelector('[data-tab="dashboard"]').click();
-    });
-
-    document.getElementById('clearAllBtn').addEventListener('click', () => {
-      if (confirm('Opravdu chceš smazat všechny uložené transakce?')) {
-        state.transactions = [];
-        saveState();
-        refreshAll();
-      }
-    });
-
-    function populateCategorySelects() {
-      const optionsHtml = state.categories.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
-      document.getElementById('manualCategory').innerHTML = optionsHtml;
-      document.getElementById('ruleCategory').innerHTML = optionsHtml;
-      document.getElementById('categoryFilter').innerHTML = `<option value="all">Všechny kategorie</option>` + optionsHtml;
-    }
-
-    function refreshAll() {
-      populateCategorySelects();
-      renderDashboard();
-      renderTransactions();
-      renderSettings();
-    }
-
-    refreshAll();
-  </script>
-</body>
-</html>
+      e.target
